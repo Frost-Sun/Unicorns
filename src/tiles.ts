@@ -615,11 +615,11 @@ export const drawMap = (
     const highlightColor = HighlightColorByTheme[theme];
     const denyColor = DenyColorByTheme[theme];
 
-    // Helper: Check if tile type is water/rainbow (inline for performance)
+    // Check if tile type is water/rainbow (inline for performance)
     const isWaterTile = (t: string | undefined): boolean =>
         t === "water" || t === "rainbow";
 
-    // Helper: Get corner radius based on neighbors (merged function)
+    // Get corner radius based on neighbors
     const getCornerRadius = (
         up?: Tile,
         down?: Tile,
