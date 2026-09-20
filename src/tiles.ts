@@ -505,8 +505,6 @@ const drawSplash = (
     ctx.fill();
 };
 
-// Add these helper functions before drawMap (around line 470)
-
 const drawFinish = (
     ctx: CanvasRenderingContext2D,
     o: GameObject,
@@ -711,7 +709,6 @@ export const drawMap = (
 
                 // Draw land tile with appropriate rounding
                 if (tl === 0 || tr === 0 || bl === 0 || br === 0) {
-                    // Has water neighbors - use dynamic corner radii
                     cx.fillStyle = landColor;
                     cx.beginPath();
                     cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [
@@ -766,7 +763,6 @@ export const drawMap = (
 
                     cx.restore();
                 } else {
-                    // No water neighbors - use fixed corner radius
                     cx.fillStyle = landColor;
                     cx.beginPath();
                     cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [
@@ -817,10 +813,9 @@ export const drawMap = (
 
                 // If this water tile has a land bay corner
                 if (tl > 0 || tr > 0 || br > 0 || bl > 0) {
-                    // Synchronized tide size to perfectly match Pass 1
                     const tide = Math.sin(time.t * 0.002) * 1.0;
 
-                    // 1. Spillover Green Base (expanded safely, no alpha overlap issues)
+                    // 1. Spillover Green Base
                     cx.fillStyle = landColor;
                     if (tl > 0) {
                         cx.fillRect(
