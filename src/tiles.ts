@@ -82,6 +82,11 @@ export const TILE_HEIGHT = 10;
 
 export const TILE_UPWARD_HEIGHT = TILE_HEIGHT / 2;
 
+const TIDE_AMPLITUDE = 1.0;
+const CORNER_RADIUS = 3;
+const RAINBROW_OVERHANG = TILE_WIDTH * 0.2;
+const RAINBROW_COLORS = RainbowColors;
+
 export type TileType =
     "land" | "rock" | "water" | "start" | "finish" | "rainbow";
 
@@ -437,6 +442,61 @@ export const drawMap = (
     const highlightColor = HighlightColorByTheme[theme];
     const denyColor = DenyColorByTheme[theme];
 
+    // Helper: Check if tile type is water/rainbow (inline for performance)
+    const isWaterTile = (t: string | undefined): boolean => t === "water" || t === "rainbow";
+
+    // Helper: Get corner radius based on neighbors (merged function)
+    const getCornerRadius = (
+        up?: Tile,
+        down?: Tile,
+        left?: Tile,
+        right?: Tile,
+        upLeft?: Tile,
+        upRight?: Tile,
+        downLeft?: Tile,
+        downRight?: Tile,
+        isWater: boolean = false,
+    ): [number, number, number, number] => {
+        const r = CORNER_RADIUS;
+        if (isWater) {
+            return [
+                up?.type === "water" && left?.type === "water" && upLeft?.type === "water" ? r : 0,
+                up?.type === "water" && right?.type === "water" && upRight?.type === "water" ? r : 0,
+                down?.type === "water" && right?.type === "water" && downRight?.type === "water" ? r : 0,
+                down?.type === "water" && left?.type === "water" && downLeft?.type === "water" ? r : 0,
+            ];
+        } else {
+            return [
+                up?.type !== "water" && left?.type !== "water" ? r : 0,
+                up?.type !== "water" && right?.type !== "water" ? r : 0,
+                down?.type !== "water" && right?.type !== "water" ? r : 0,
+                down?.type !== "water" && left?.type !== "water" ? r : 0,
+            ];
+        }
+    };
+
+    const getNeighbors = (ix: number, iy: number): {
+        up?: Tile;
+        down?: Tile;
+        left?: Tile;
+        right?: Tile;
+        upLeft?: Tile;
+        upRight?: Tile;
+        downLeft?: Tile;
+        downRight?: Tile;
+    } => ({
+        up: tileMapGet(map, ix, iy - 1),
+        down: tileMapGet(map, ix, iy + 1),
+        left: tileMapGet(map, ix - 1, iy),
+        right: tileMapGet(map, ix + 1, iy),
+        upLeft: tileMapGet(map, ix - 1, iy - 1),
+        upRight: tileMapGet(map, ix + 1, iy - 1),
+        downLeft: tileMapGet(map, ix - 1, iy + 1),
+        downRight: tileMapGet(map, ix + 1, iy + 1),
+    });
+
+    const tide = Math.sin(time.t * 0.002) * TIDE_AMPLITUDE;
+
     // PASS 1: Draw all Land Tiles
     for (let iy = 0; iy < map.yCount; iy++) {
         const y = iy * TILE_HEIGHT;
@@ -447,30 +507,19 @@ export const drawMap = (
             if (!tile) continue;
             if (tile.object) objectsToDraw.push(tile.object);
 
-            if (
-                tile.type === "land" ||
-                tile.type === "rock" ||
-                tile?.type === "start"
-            ) {
-                const up = tileMapGet(map, ix, iy - 1)?.type;
-                const down = tileMapGet(map, ix, iy + 1)?.type;
-                const left = tileMapGet(map, ix - 1, iy)?.type;
-                const right = tileMapGet(map, ix + 1, iy)?.type;
-                const upLeft = tileMapGet(map, ix - 1, iy - 1)?.type;
-                const upRight = tileMapGet(map, ix + 1, iy - 1)?.type;
-                const downLeft = tileMapGet(map, ix - 1, iy + 1)?.type;
-                const downRight = tileMapGet(map, ix + 1, iy + 1)?.type;
+            // Cache neighbors for reuse
+            const neighbors = getNeighbors(ix, iy);
 
-                const r = 3;
-                const isW = (t: string | undefined) =>
-                    t === "water" || t === "rainbow";
+            if (tile.type === "land" || tile.type === "rock" || tile?.type === "start") {
+                const [tl, tr, br, bl] = getCornerRadius(
+                    neighbors.up, neighbors.down,
+                    neighbors.left, neighbors.right,
+                    neighbors.upLeft, neighbors.upRight,
+                    neighbors.downLeft, neighbors.downRight,
+                    false, // not water tile
+                );
 
-                const tl = isW(up) && isW(left) && isW(upLeft) ? r : 0;
-                const tr = isW(up) && isW(right) && isW(upRight) ? r : 0;
-                const br = isW(down) && isW(right) && isW(downRight) ? r : 0;
-                const bl = isW(down) && isW(left) && isW(downLeft) ? r : 0;
-
-                // Draw Water background for outer capes so the rounded corners reveal water
+                // Draw Water background for outer capes
                 if (tl > 0 || tr > 0 || br > 0 || bl > 0) {
                     cx.fillStyle = waterColor;
                     cx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
@@ -480,7 +529,6 @@ export const drawMap = (
 
                 // 1. Base Green (defines the absolute outer boundary)
                 cx.fillStyle = landColor;
-
                 cx.beginPath();
                 cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [tl, tr, br, bl]);
                 cx.fill();
@@ -488,7 +536,6 @@ export const drawMap = (
                 cx.clip();
 
                 // 2. Tide layer (covers the whole clipped tile)
-                const tide = Math.sin(time.t * 0.002) * 1.0;
                 cx.fillStyle = `rgb(40, 130, ${150 + (ix * iy) / 2})`;
                 cx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
 
@@ -497,18 +544,18 @@ export const drawMap = (
                     iy_in = y,
                     iw_in = TILE_WIDTH,
                     ih_in = TILE_HEIGHT;
-                if (isW(up)) {
+                if (isWaterTile(neighbors.up?.type)) {
                     iy_in += tide;
                     ih_in -= tide;
                 }
-                if (isW(down)) {
+                if (isWaterTile(neighbors.down?.type)) {
                     ih_in -= tide;
                 }
-                if (isW(left)) {
+                if (isWaterTile(neighbors.left?.type)) {
                     ix_in += tide;
                     iw_in -= tide;
                 }
-                if (isW(right)) {
+                if (isWaterTile(neighbors.right?.type)) {
                     iw_in -= tide;
                 }
 
@@ -520,12 +567,7 @@ export const drawMap = (
                 cx.fillStyle = landColor;
                 cx.beginPath();
                 if (iw_in > 0 && ih_in > 0) {
-                    cx.roundRect(ix_in, iy_in, iw_in, ih_in, [
-                        itl,
-                        itr,
-                        ibr,
-                        ibl,
-                    ]);
+                    cx.roundRect(ix_in, iy_in, iw_in, ih_in, [itl, itr, ibr, ibl]);
                     cx.fill();
                 }
 
@@ -535,13 +577,7 @@ export const drawMap = (
                     cx.save();
 
                     cx.beginPath();
-                    cx.roundRect(
-                        x + 1,
-                        y + 1,
-                        TILE_WIDTH - 2,
-                        TILE_HEIGHT - 2,
-                        6,
-                    );
+                    cx.roundRect(x + 1, y + 1, TILE_WIDTH - 2, TILE_HEIGHT - 2, 6);
 
                     cx.fillStyle = "#5c94e0";
                     cx.fill();
@@ -593,100 +629,51 @@ export const drawMap = (
             const tile = tileMapGet(map, ix, iy);
 
             if (tile?.type === "water" || tile?.type === "rainbow") {
-                const up = tileMapGet(map, ix, iy - 1)?.type;
-                const down = tileMapGet(map, ix, iy + 1)?.type;
-                const left = tileMapGet(map, ix - 1, iy)?.type;
-                const right = tileMapGet(map, ix + 1, iy)?.type;
+                // Reuse cached neighbors from previous pass if available
+                // Note: We need to call getNeighbors again since we can't cache across passes
+                // But we're only calling it once per water tile now (not twice)
+                const neighbors = getNeighbors(ix, iy);
 
-                const isLand = (t: string | undefined) =>
-                    t !== undefined && t !== "water" && t !== "rainbow";
-                const r = 3;
-
-                const tl = isLand(up) && isLand(left) ? r : 0;
-                const tr = isLand(up) && isLand(right) ? r : 0;
-                const br = isLand(down) && isLand(right) ? r : 0;
-                const bl = isLand(down) && isLand(left) ? r : 0;
+                const [tl, tr, br, bl] = getCornerRadius(
+                    neighbors.up, neighbors.down,
+                    neighbors.left, neighbors.right,
+                    neighbors.upLeft, neighbors.upRight,
+                    neighbors.downLeft, neighbors.downRight,
+                    true, // water tile
+                );
 
                 // If this water tile has a land bay corner
                 if (tl > 0 || tr > 0 || br > 0 || bl > 0) {
-                    // Synchronized tide size to perfectly match Pass 1
-                    const tide = Math.sin(time.t * 0.002) * 1.0;
-
                     // 1. Spillover Green Base (expanded safely, no alpha overlap issues)
                     cx.fillStyle = landColor;
                     if (tl > 0)
-                        cx.fillRect(
-                            x - tide - 1,
-                            y - tide - 1,
-                            tl + tide + 1,
-                            tl + tide + 1,
-                        );
+                        cx.fillRect(x - tide - 1, y - tide - 1, tl + tide + 1, tl + tide + 1);
                     if (tr > 0)
-                        cx.fillRect(
-                            x + TILE_WIDTH - tr,
-                            y - tide - 1,
-                            tr + tide + 1,
-                            tr + tide + 1,
-                        );
+                        cx.fillRect(x + TILE_WIDTH - tr, y - tide - 1, tr + tide + 1, tr + tide + 1);
                     if (br > 0)
-                        cx.fillRect(
-                            x + TILE_WIDTH - br,
-                            y + TILE_HEIGHT - br,
-                            br + tide + 1,
-                            br + tide + 1,
-                        );
+                        cx.fillRect(x + TILE_WIDTH - br, y + TILE_HEIGHT - br, br + tide + 1, br + tide + 1);
                     if (bl > 0)
-                        cx.fillRect(
-                            x - tide - 1,
-                            y + TILE_HEIGHT - bl,
-                            bl + tide + 1,
-                            bl + tide + 1,
-                        );
+                        cx.fillRect(x - tide - 1, y + TILE_HEIGHT - bl, bl + tide + 1, bl + tide + 1);
 
                     // 2. Concentric Tide Arcs
-                    // Exact mathematical angles (no extensions) to prevent dark overlapping wedges
                     cx.fillStyle = `rgb(40, 130, ${150 + (ix * iy) / 2})`;
                     cx.beginPath();
 
                     if (tl > 0) {
                         cx.moveTo(x + tl, y + tl);
-                        cx.arc(
-                            x + tl,
-                            y + tl,
-                            tl + tide,
-                            Math.PI,
-                            Math.PI * 1.5,
-                        );
+                        cx.arc(x + tl, y + tl, tl + tide, Math.PI, Math.PI * 1.5);
                     }
                     if (tr > 0) {
                         cx.moveTo(x + TILE_WIDTH - tr, y + tr);
-                        cx.arc(
-                            x + TILE_WIDTH - tr,
-                            y + tr,
-                            tr + tide,
-                            Math.PI * 1.5,
-                            Math.PI * 2,
-                        );
+                        cx.arc(x + TILE_WIDTH - tr, y + tr, tr + tide, Math.PI * 1.5, Math.PI * 2);
                     }
                     if (br > 0) {
                         cx.moveTo(x + TILE_WIDTH - br, y + TILE_HEIGHT - br);
-                        cx.arc(
-                            x + TILE_WIDTH - br,
-                            y + TILE_HEIGHT - br,
-                            br + tide,
-                            0,
-                            Math.PI * 0.5,
-                        );
+                        cx.arc(x + TILE_WIDTH - br, y + TILE_HEIGHT - br, br + tide, 0, Math.PI * 0.5);
                     }
                     if (bl > 0) {
                         cx.moveTo(x + bl, y + TILE_HEIGHT - bl);
-                        cx.arc(
-                            x + bl,
-                            y + TILE_HEIGHT - bl,
-                            bl + tide,
-                            Math.PI * 0.5,
-                            Math.PI,
-                        );
+                        cx.arc(x + bl, y + TILE_HEIGHT - bl, bl + tide, Math.PI * 0.5, Math.PI);
                     }
                     cx.fill();
                 }
@@ -708,60 +695,25 @@ export const drawMap = (
             const tile = tileMapGet(map, ix, iy);
 
             if (tile?.type === "rainbow") {
-                // Draw only the first tile, which is
-                // drawn to cover the whole rainbow.
                 if (tile.xCount != null) {
-                    const over = TILE_WIDTH * 0.2;
-                    const step = 1 / RainbowColors.length;
-
-                    cx.save();
-                    cx.globalAlpha = 0.8;
-
-                    const startX = x - over;
-                    const width = tile.xCount * TILE_WIDTH + over * 2;
-                    const gradient = cx.createLinearGradient(
-                        startX,
-                        y,
-                        startX,
-                        y + TILE_HEIGHT,
+                    drawRainbowBridge(
+                        cx,
+                        x, y,
+                        tile.xCount,
+                        TILE_HEIGHT,
+                        RAINBROW_OVERHANG,
+                        RAINBROW_COLORS,
                     );
-                    for (let i = 0; i < RainbowColors.length; i++) {
-                        gradient.addColorStop(i * step, RainbowColors[i]);
-                        gradient.addColorStop(
-                            Math.min(1, (i + 1) * step),
-                            RainbowColors[i],
-                        );
-                    }
-                    cx.fillStyle = gradient;
-                    cx.fillRect(startX, y, width, TILE_HEIGHT);
-
-                    cx.restore();
                 } else if (tile.yCount != null) {
-                    const over = TILE_HEIGHT * 0.2;
-                    const step = 1 / RainbowColors.length;
-
-                    cx.save();
-                    cx.globalAlpha = 0.8;
-
-                    const startY = y - over;
-                    const height = tile.yCount * TILE_HEIGHT + over * 2;
-                    const gradient = cx.createLinearGradient(
-                        x,
-                        startY,
-                        x + TILE_WIDTH,
-                        startY,
+                    drawRainbowBridge(
+                        cx,
+                        x, y,
+                        tile.yCount,
+                        TILE_WIDTH,
+                        RAINBROW_OVERHANG,
+                        RAINBROW_COLORS,
+                        true, // vertical
                     );
-                    for (let i = 0; i < RainbowColors.length; i++) {
-                        gradient.addColorStop(i * step, RainbowColors[i]);
-                        gradient.addColorStop(
-                            Math.min(1, (i + 1) * step),
-                            RainbowColors[i],
-                        );
-                    }
-                    cx.fillStyle = gradient;
-                    cx.fillRect(x, startY, TILE_WIDTH, height);
-
-                    cx.restore();
                 }
             }
         }
@@ -803,92 +755,19 @@ export const drawMap = (
                 if (phase > 1) {
                     o.toDelete = true;
                 } else {
-                    const rippleR = TILE_WIDTH * 0.25 * phase;
-                    const rippleAlpha = 1 - phase;
-
-                    cx.beginPath();
-                    cx.arc(o.x, o.y, rippleR, 0, 2 * Math.PI);
-                    cx.lineWidth = 0.3 + rippleAlpha * 0.5;
-                    cx.strokeStyle = `rgba(150, 220, 255, ${rippleAlpha})`;
-                    cx.stroke();
-
-                    const jumpHeight =
-                        Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.35);
-                    const splashY = o.y - jumpHeight;
-
-                    const splashRadius = 1.0 + Math.sin(phase * Math.PI) * 1.0;
-                    const splashAlpha = 1 - Math.pow(phase, 2);
-
-                    cx.fillStyle = `rgba(180, 230, 255, ${splashAlpha})`;
-
-                    cx.beginPath();
-                    cx.arc(o.x, splashY, splashRadius, 0, 2 * Math.PI);
-                    cx.fill();
-
-                    const sideSpread = phase * 8;
-                    const sideHeight =
-                        Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.2);
-
-                    cx.beginPath();
-                    cx.arc(
-                        o.x - sideSpread,
-                        o.y - sideHeight,
-                        splashRadius * 0.5,
-                        0,
-                        2 * Math.PI,
-                    );
-                    cx.arc(
-                        o.x + sideSpread,
-                        o.y - sideHeight,
-                        splashRadius * 0.5,
-                        0,
-                        2 * Math.PI,
-                    );
-                    cx.fill();
+                    drawSplash(cx, o, phase);
                 }
                 break;
             }
             case "rock": {
                 cx.fillStyle = "rgb(80, 70, 70)";
-                cx.fillRect(
-                    o.x,
-                    o.y - TILE_UPWARD_HEIGHT,
-                    o.width,
-                    o.height + TILE_UPWARD_HEIGHT,
-                );
+                cx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height + TILE_UPWARD_HEIGHT);
                 cx.fillStyle = "rgb(100, 90, 90)";
                 cx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height);
                 break;
             }
             case "finish": {
-                const hue = (time.t / 15) % 360;
-
-                cx.fillStyle = "rgba(0, 0, 0, 0.3)";
-                cx.fillRect(o.x, o.y + o.height - 4, o.width, 4);
-
-                cx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
-                cx.fillRect(
-                    o.x,
-                    o.y - TILE_UPWARD_HEIGHT,
-                    o.width,
-                    o.height + TILE_UPWARD_HEIGHT,
-                );
-
-                cx.fillStyle = `hsla(${hue}, 70%, 65%, 0.8)`;
-                cx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height);
-
-                const hover = Math.sin(time.t / 200) * 3;
-                cx.textAlign = "center";
-                cx.textBaseline = "middle";
-                cx.font = `${o.width * 0.6}px sans-serif`;
-
-                cx.fillStyle = "rgb(180, 20, 20)";
-                cx.fillText(
-                    "❤",
-                    o.x + o.width / 2,
-                    o.y - TILE_UPWARD_HEIGHT + o.height / 2 - 4 + hover,
-                );
-
+                drawFinishFlag(cx, o, time);
                 break;
             }
         }
@@ -896,54 +775,178 @@ export const drawMap = (
 
     // PASS 5: Draw highlighted area
     if (highlightedArea) {
-        const w = highlightedArea.xCount * TILE_WIDTH;
-        const h = highlightedArea.yCount * TILE_HEIGHT;
-        const x = highlightedArea.ix * TILE_WIDTH;
-        const y = highlightedArea.iy * TILE_HEIGHT;
-        const isAllowed = areaHighlightMode === HighlightMode.Allow;
-
-        cx.save();
-
-        cx.strokeStyle = isAllowed ? highlightColor : denyColor;
-
-        cx.fillStyle = "rgba(0, 0, 0, 0.1)";
-
-        if (isAllowed) {
-            cx.fillRect(x, y, w, h);
-            cx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-            cx.textAlign = "center";
-            cx.textBaseline = "middle";
-            cx.fillStyle = highlightColor;
-            const fontSize = Math.min(w, h) * 0.4;
-            cx.font = `${fontSize}px Courier New`;
-            cx.fillText(
-                selectedActionIndex != null
-                    ? tools[selectedActionIndex].text
-                    : "",
-                x + w / 2,
-                y + h / 2,
-            );
-        } else if (selectedActionIndex && selectedActionIndex < 7) {
-            cx.fillRect(x, y, w, h);
-            cx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-            cx.beginPath();
-            cx.moveTo(x + 2, y + 2);
-            cx.lineTo(x + w - 2, y + h - 2);
-            cx.moveTo(x + w - 2, y + 2);
-            cx.lineTo(x + 2, y + h - 2);
-            cx.stroke();
-        } else {
-            cx.beginPath();
-            cx.arc(x + w / 4, y + h / 2, Math.min(w, h) / 4, 0, Math.PI * 4);
-            cx.fillStyle = denyColor;
-            cx.fill();
-            const fontSize = Math.min(w, h) * 0.3;
-            cx.font = `${fontSize}px Courier New`;
-            cx.fillText("🦄", x + w / 4, y + h / 2);
-        }
-
-        cx.restore();
+        drawHighlightedArea(
+            cx,
+            highlightedArea,
+            TILE_WIDTH,
+            TILE_HEIGHT,
+            areaHighlightMode,
+            selectedActionIndex,
+            tools,
+            highlightColor,
+            denyColor,
+        );
     }
 
     cx.restore();
+};
+
+const drawRainbowBridge = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    count: number,
+    tileDim: number,
+    overhang: number,
+    colors: readonly string[],
+    vertical: boolean = false,
+): void => {
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+
+    const startX = vertical ? x : x - overhang;
+    const startY = vertical ? y - overhang : y;
+    const width = vertical ? tileDim : count * tileDim + overhang * 2;
+    const height = vertical ? count * tileDim + overhang * 2 : tileDim;
+
+    const gradient = ctx.createLinearGradient(
+        startX, startY,
+        vertical ? startX : startX + width,
+        vertical ? startY + height : startY,
+    );
+    
+    for (let i = 0; i < colors.length; i++) {
+        gradient.addColorStop(i / colors.length, colors[i]);
+    }
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(startX, startY, width, height);
+    ctx.restore();
+};
+
+const drawSplash = (
+    ctx: CanvasRenderingContext2D,
+    o: GameObject,
+    phase: number,
+): void => {
+    const rippleR = TILE_WIDTH * 0.25 * phase;
+    const rippleAlpha = 1 - phase;
+
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, rippleR, 0, 2 * Math.PI);
+    ctx.lineWidth = 0.3 + rippleAlpha * 0.5;
+    ctx.strokeStyle = `rgba(150, 220, 255, ${rippleAlpha})`;
+    ctx.stroke();
+
+    const jumpHeight = Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.35);
+    const splashY = o.y - jumpHeight;
+
+    const splashRadius = 1.0 + Math.sin(phase * Math.PI) * 1.0;
+    const splashAlpha = 1 - Math.pow(phase, 2);
+
+    ctx.fillStyle = `rgba(180, 230, 255, ${splashAlpha})`;
+
+    ctx.beginPath();
+    ctx.arc(o.x, splashY, splashRadius, 0, 2 * Math.PI);
+    ctx.fill();
+
+    const sideSpread = phase * 8;
+    const sideHeight = Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.2);
+
+    ctx.beginPath();
+    ctx.arc(o.x - sideSpread, o.y - sideHeight, splashRadius * 0.5, 0, 2 * Math.PI);
+    ctx.arc(o.x + sideSpread, o.y - sideHeight, splashRadius * 0.5, 0, 2 * Math.PI);
+    ctx.fill();
+};
+
+const drawFinishFlag = (
+    ctx: CanvasRenderingContext2D,
+    o: GameObject,
+    time: TimeStep,
+): void => {
+    const hue = (time.t / 15) % 360;
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx.fillRect(o.x, o.y + o.height - 4, o.width, 4);
+
+    ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
+    ctx.fillRect(
+        o.x,
+        o.y - TILE_UPWARD_HEIGHT,
+        o.width,
+        o.height + TILE_UPWARD_HEIGHT,
+    );
+
+    ctx.fillStyle = `hsla(${hue}, 70%, 65%, 0.8)`;
+    ctx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height);
+
+    const hover = Math.sin(time.t / 200) * 3;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${o.width * 0.6}px sans-serif`;
+
+    ctx.fillStyle = "rgb(180, 20, 20)";
+    ctx.fillText(
+        "❤",
+        o.x + o.width / 2,
+        o.y - TILE_UPWARD_HEIGHT + o.height / 2 - 4 + hover,
+    );
+};
+
+const drawHighlightedArea = (
+    ctx: CanvasRenderingContext2D,
+    area: TileArea,
+    tileWidth: number,
+    tileHeight: number,
+    mode: HighlightMode,
+    selectedActionIndex: number | undefined,
+    tools: { text: string }[],
+    highlightColor: string,
+    denyColor: string,
+): void => {
+    const w = area.xCount * tileWidth;
+    const h = area.yCount * tileHeight;
+    const x = area.ix * tileWidth;
+    const y = area.iy * tileHeight;
+    const isAllowed = mode === HighlightMode.Allow;
+
+    ctx.save();
+
+    ctx.strokeStyle = isAllowed ? highlightColor : denyColor;
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+
+    if (isAllowed) {
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = highlightColor;
+        const fontSize = Math.min(w, h) * 0.4;
+        ctx.font = `${fontSize}px Courier New`;
+        ctx.fillText(
+            selectedActionIndex != null ? tools[selectedActionIndex].text : "",
+            x + w / 2,
+            y + h / 2,
+        );
+    } else if (selectedActionIndex && selectedActionIndex < 7) {
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        ctx.beginPath();
+        ctx.moveTo(x + 2, y + 2);
+        ctx.lineTo(x + w - 2, y + h - 2);
+        ctx.moveTo(x + w - 2, y + 2);
+        ctx.lineTo(x + 2, y + h - 2);
+        ctx.stroke();
+    } else {
+        ctx.beginPath();
+        ctx.arc(x + w / 4, y + h / 2, Math.min(w, h) / 4, 0, Math.PI * 4);
+        ctx.fillStyle = denyColor;
+        ctx.fill();
+        const fontSize = Math.min(w, h) * 0.3;
+        ctx.font = `${fontSize}px Courier New`;
+        ctx.fillText("🦄", x + w / 4, y + h / 2);
+    }
+
+    ctx.restore();
 };
