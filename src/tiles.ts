@@ -427,36 +427,49 @@ const drawRainbowBridge = (
     ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
-    count: number,
-    tileDim: number,
+    tile: Tile,
     overhang: number,
     colors: readonly string[],
-    vertical: boolean = false,
 ): void => {
+    const count = tile.xCount != null ? tile.xCount : tile.yCount;
+    if (!count || count === 0) {
+        return;
+    }
+
     ctx.save();
     ctx.globalAlpha = 0.8;
 
+    const vertical = tile.yCount != null;
+
+    // Calculate dimensions based on direction
     const startX = vertical ? x : x - overhang;
     const startY = vertical ? y - overhang : y;
-    const width = vertical ? tileDim : count * tileDim + overhang * 2;
-    const height = vertical ? count * tileDim + overhang * 2 : tileDim;
+    const width = vertical ? TILE_WIDTH : count * TILE_HEIGHT + overhang * 2;
+    const height = vertical ? count * TILE_HEIGHT + overhang * 2 : TILE_HEIGHT;
 
-    const gradient = ctx.createLinearGradient(
-        startX,
-        startY,
-        vertical ? startX : startX + width,
-        vertical ? startY + height : startY,
-    );
-
+    // Draw each color band as a separate rectangle
     for (let i = 0; i < colors.length; i++) {
-        gradient.addColorStop(i / colors.length, colors[i]);
+        ctx.fillStyle = colors[i];
+
+        if (vertical) {
+            ctx.fillRect(
+                startX + i * (width / colors.length),
+                startY,
+                Math.max(1, width / colors.length),
+                height,
+            );
+        } else {
+            ctx.fillRect(
+                startX,
+                startY + i * (height / colors.length),
+                width,
+                Math.max(1, height / colors.length),
+            );
+        }
     }
 
-    ctx.fillStyle = gradient;
-    ctx.fillRect(startX, startY, width, height);
     ctx.restore();
 };
-
 const drawSplash = (
     ctx: CanvasRenderingContext2D,
     o: GameObject,
@@ -940,36 +953,28 @@ export const drawMap = (
                     cx.fill();
                 }
 
-                // 3. Main Water Layer (always draw this)
-                cx.fillStyle = waterColor;
-                cx.beginPath();
-                cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [tl, tr, br, bl]);
-                cx.fill();
-
                 // If rainbow bridge, draw it here
                 if (tile?.type === "rainbow") {
-                    if (tile.xCount != null) {
+                    if (tile.xCount != null || tile.yCount != null) {
                         drawRainbowBridge(
                             cx,
                             x,
                             y,
-                            tile.xCount,
-                            TILE_HEIGHT,
+                            tile,
                             RAINBROW_OVERHANG,
                             RAINBROW_COLORS,
-                        );
-                    } else if (tile.yCount != null) {
-                        drawRainbowBridge(
-                            cx,
-                            x,
-                            y,
-                            tile.yCount,
-                            TILE_WIDTH,
-                            RAINBROW_OVERHANG,
-                            RAINBROW_COLORS,
-                            true, // vertical
                         );
                     }
+                } else if (tile?.type === "water") {
+                    cx.fillStyle = waterColor;
+                    cx.beginPath();
+                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [
+                        tl,
+                        tr,
+                        br,
+                        bl,
+                    ]);
+                    cx.fill();
                 }
             }
         }
