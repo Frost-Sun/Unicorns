@@ -895,8 +895,8 @@ export const drawMap = (
                     }
 
                     // 2. Concentric Tide Arcs
-                    // Exact mathematical angles (no extensions) to prevent dark overlapping wedges
                     cx.fillStyle = `rgb(40, 130, ${150 + (ix * iy) / 2})`;
+
                     cx.beginPath();
                     if (tl > 0) {
                         cx.moveTo(x + tl, y + tl);
@@ -952,24 +952,34 @@ export const drawMap = (
                     ]);
                     cx.fill();
                 }
-
-                if (tile?.type === "rainbow") {
-                    drawRainbowBridge(
-                        cx,
-                        x,
-                        y,
-                        tile,
-                        RAINBROW_OVERHANG,
-                        RAINBROW_COLORS,
-                    );
-                }
             }
         }
     }
+
+    // PASS 3: Draw Rainbow Bridges (after tide arcs)
+    for (let iy = 0; iy < map.yCount; iy++) {
+        const y = iy * TILE_HEIGHT;
+        for (let ix = 0; ix < map.xCount; ix++) {
+            const x = ix * TILE_WIDTH;
+            const tile = tileMapGet(map, ix, iy);
+
+            if (tile?.type === "rainbow") {
+                drawRainbowBridge(
+                    cx,
+                    x,
+                    y,
+                    tile,
+                    RAINBROW_OVERHANG,
+                    RAINBROW_COLORS,
+                );
+            }
+        }
+    }
+
     objectsToDraw.push(...objects);
     objectsToDraw.sort((a, b) => a.y + a.height - (b.y + b.height));
 
-    // PASS 3: Rest of the objects
+    // PASS 4: Rest of the objects
     for (let i = 0; i < objectsToDraw.length; i++) {
         const o = objectsToDraw[i];
 
@@ -1025,7 +1035,7 @@ export const drawMap = (
         }
     }
 
-    // PASS 4: Draw highlighted area
+    // PASS 5: Draw highlighted area
     if (highlightedArea) {
         drawHighlightedArea(
             cx,
