@@ -423,6 +423,179 @@ const digVertically = (
     }
 };
 
+const drawRainbowBridge = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    count: number,
+    tileDim: number,
+    overhang: number,
+    colors: readonly string[],
+    vertical: boolean = false,
+): void => {
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+
+    const startX = vertical ? x : x - overhang;
+    const startY = vertical ? y - overhang : y;
+    const width = vertical ? tileDim : count * tileDim + overhang * 2;
+    const height = vertical ? count * tileDim + overhang * 2 : tileDim;
+
+    const gradient = ctx.createLinearGradient(
+        startX,
+        startY,
+        vertical ? startX : startX + width,
+        vertical ? startY + height : startY,
+    );
+
+    for (let i = 0; i < colors.length; i++) {
+        gradient.addColorStop(i / colors.length, colors[i]);
+    }
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(startX, startY, width, height);
+    ctx.restore();
+};
+
+const drawSplash = (
+    ctx: CanvasRenderingContext2D,
+    o: GameObject,
+    phase: number,
+): void => {
+    const rippleR = TILE_WIDTH * 0.25 * phase;
+    const rippleAlpha = 1 - phase;
+
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, rippleR, 0, 2 * Math.PI);
+    ctx.lineWidth = 0.3 + rippleAlpha * 0.5;
+    ctx.strokeStyle = `rgba(150, 220, 255, ${rippleAlpha})`;
+    ctx.stroke();
+
+    const jumpHeight = Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.35);
+    const splashY = o.y - jumpHeight;
+
+    const splashRadius = 1.0 + Math.sin(phase * Math.PI) * 1.0;
+    const splashAlpha = 1 - Math.pow(phase, 2);
+
+    ctx.fillStyle = `rgba(180, 230, 255, ${splashAlpha})`;
+
+    ctx.beginPath();
+    ctx.arc(o.x, splashY, splashRadius, 0, 2 * Math.PI);
+    ctx.fill();
+
+    const sideSpread = phase * 8;
+    const sideHeight = Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.2);
+
+    ctx.beginPath();
+    ctx.arc(
+        o.x - sideSpread,
+        o.y - sideHeight,
+        splashRadius * 0.5,
+        0,
+        2 * Math.PI,
+    );
+    ctx.arc(
+        o.x + sideSpread,
+        o.y - sideHeight,
+        splashRadius * 0.5,
+        0,
+        2 * Math.PI,
+    );
+    ctx.fill();
+};
+
+const drawFinish = (
+    ctx: CanvasRenderingContext2D,
+    o: GameObject,
+    time: TimeStep,
+): void => {
+    const hue = (time.t / 15) % 360;
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx.fillRect(o.x, o.y + o.height - 4, o.width, 4);
+
+    ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
+    ctx.fillRect(
+        o.x,
+        o.y - TILE_UPWARD_HEIGHT,
+        o.width,
+        o.height + TILE_UPWARD_HEIGHT,
+    );
+
+    ctx.fillStyle = `hsla(${hue}, 70%, 65%, 0.8)`;
+    ctx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height);
+
+    const hover = Math.sin(time.t / 200) * 3;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${o.width * 0.6}px sans-serif`;
+
+    ctx.fillStyle = "rgb(180, 20, 20)";
+    ctx.fillText(
+        "❤",
+        o.x + o.width / 2,
+        o.y - TILE_UPWARD_HEIGHT + o.height / 2 - 4 + hover,
+    );
+};
+
+const drawHighlightedArea = (
+    ctx: CanvasRenderingContext2D,
+    area: TileArea,
+    tileWidth: number,
+    tileHeight: number,
+    mode: HighlightMode,
+    selectedActionIndex: number | undefined,
+    tools: { text: string }[],
+    highlightColor: string,
+    denyColor: string,
+): void => {
+    const w = area.xCount * tileWidth;
+    const h = area.yCount * tileHeight;
+    const x = area.ix * tileWidth;
+    const y = area.iy * tileHeight;
+    const isAllowed = mode === HighlightMode.Allow;
+
+    ctx.save();
+
+    ctx.strokeStyle = isAllowed ? highlightColor : denyColor;
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+
+    if (isAllowed) {
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = highlightColor;
+        const fontSize = Math.min(w, h) * 0.4;
+        ctx.font = `${fontSize}px Courier New`;
+        ctx.fillText(
+            selectedActionIndex != null ? tools[selectedActionIndex].text : "",
+            x + w / 2,
+            y + h / 2,
+        );
+    } else if (selectedActionIndex && selectedActionIndex < 7) {
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        ctx.beginPath();
+        ctx.moveTo(x + 2, y + 2);
+        ctx.lineTo(x + w - 2, y + h - 2);
+        ctx.moveTo(x + w - 2, y + 2);
+        ctx.lineTo(x + 2, y + h - 2);
+        ctx.stroke();
+    } else {
+        ctx.beginPath();
+        ctx.arc(x + w / 4, y + h / 2, Math.min(w, h) / 4, 0, Math.PI * 4);
+        ctx.fillStyle = denyColor;
+        ctx.fill();
+        const fontSize = Math.min(w, h) * 0.3;
+        ctx.font = `${fontSize}px Courier New`;
+        ctx.fillText("🦄", x + w / 4, y + h / 2);
+    }
+
+    ctx.restore();
+};
+
 export const drawMap = (
     time: TimeStep,
     map: TileMap<Tile>,
@@ -861,7 +1034,7 @@ export const drawMap = (
                 break;
             }
             case "finish": {
-                drawFinishFlag(cx, o, time);
+                drawFinish(cx, o, time);
                 break;
             }
         }
@@ -883,177 +1056,4 @@ export const drawMap = (
     }
 
     cx.restore();
-};
-
-const drawRainbowBridge = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    count: number,
-    tileDim: number,
-    overhang: number,
-    colors: readonly string[],
-    vertical: boolean = false,
-): void => {
-    ctx.save();
-    ctx.globalAlpha = 0.8;
-
-    const startX = vertical ? x : x - overhang;
-    const startY = vertical ? y - overhang : y;
-    const width = vertical ? tileDim : count * tileDim + overhang * 2;
-    const height = vertical ? count * tileDim + overhang * 2 : tileDim;
-
-    const gradient = ctx.createLinearGradient(
-        startX,
-        startY,
-        vertical ? startX : startX + width,
-        vertical ? startY + height : startY,
-    );
-
-    for (let i = 0; i < colors.length; i++) {
-        gradient.addColorStop(i / colors.length, colors[i]);
-    }
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(startX, startY, width, height);
-    ctx.restore();
-};
-
-const drawSplash = (
-    ctx: CanvasRenderingContext2D,
-    o: GameObject,
-    phase: number,
-): void => {
-    const rippleR = TILE_WIDTH * 0.25 * phase;
-    const rippleAlpha = 1 - phase;
-
-    ctx.beginPath();
-    ctx.arc(o.x, o.y, rippleR, 0, 2 * Math.PI);
-    ctx.lineWidth = 0.3 + rippleAlpha * 0.5;
-    ctx.strokeStyle = `rgba(150, 220, 255, ${rippleAlpha})`;
-    ctx.stroke();
-
-    const jumpHeight = Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.35);
-    const splashY = o.y - jumpHeight;
-
-    const splashRadius = 1.0 + Math.sin(phase * Math.PI) * 1.0;
-    const splashAlpha = 1 - Math.pow(phase, 2);
-
-    ctx.fillStyle = `rgba(180, 230, 255, ${splashAlpha})`;
-
-    ctx.beginPath();
-    ctx.arc(o.x, splashY, splashRadius, 0, 2 * Math.PI);
-    ctx.fill();
-
-    const sideSpread = phase * 8;
-    const sideHeight = Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.2);
-
-    ctx.beginPath();
-    ctx.arc(
-        o.x - sideSpread,
-        o.y - sideHeight,
-        splashRadius * 0.5,
-        0,
-        2 * Math.PI,
-    );
-    ctx.arc(
-        o.x + sideSpread,
-        o.y - sideHeight,
-        splashRadius * 0.5,
-        0,
-        2 * Math.PI,
-    );
-    ctx.fill();
-};
-
-const drawFinishFlag = (
-    ctx: CanvasRenderingContext2D,
-    o: GameObject,
-    time: TimeStep,
-): void => {
-    const hue = (time.t / 15) % 360;
-
-    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-    ctx.fillRect(o.x, o.y + o.height - 4, o.width, 4);
-
-    ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
-    ctx.fillRect(
-        o.x,
-        o.y - TILE_UPWARD_HEIGHT,
-        o.width,
-        o.height + TILE_UPWARD_HEIGHT,
-    );
-
-    ctx.fillStyle = `hsla(${hue}, 70%, 65%, 0.8)`;
-    ctx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height);
-
-    const hover = Math.sin(time.t / 200) * 3;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = `${o.width * 0.6}px sans-serif`;
-
-    ctx.fillStyle = "rgb(180, 20, 20)";
-    ctx.fillText(
-        "❤",
-        o.x + o.width / 2,
-        o.y - TILE_UPWARD_HEIGHT + o.height / 2 - 4 + hover,
-    );
-};
-
-const drawHighlightedArea = (
-    ctx: CanvasRenderingContext2D,
-    area: TileArea,
-    tileWidth: number,
-    tileHeight: number,
-    mode: HighlightMode,
-    selectedActionIndex: number | undefined,
-    tools: { text: string }[],
-    highlightColor: string,
-    denyColor: string,
-): void => {
-    const w = area.xCount * tileWidth;
-    const h = area.yCount * tileHeight;
-    const x = area.ix * tileWidth;
-    const y = area.iy * tileHeight;
-    const isAllowed = mode === HighlightMode.Allow;
-
-    ctx.save();
-
-    ctx.strokeStyle = isAllowed ? highlightColor : denyColor;
-
-    ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
-
-    if (isAllowed) {
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = highlightColor;
-        const fontSize = Math.min(w, h) * 0.4;
-        ctx.font = `${fontSize}px Courier New`;
-        ctx.fillText(
-            selectedActionIndex != null ? tools[selectedActionIndex].text : "",
-            x + w / 2,
-            y + h / 2,
-        );
-    } else if (selectedActionIndex && selectedActionIndex < 7) {
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-        ctx.beginPath();
-        ctx.moveTo(x + 2, y + 2);
-        ctx.lineTo(x + w - 2, y + h - 2);
-        ctx.moveTo(x + w - 2, y + 2);
-        ctx.lineTo(x + 2, y + h - 2);
-        ctx.stroke();
-    } else {
-        ctx.beginPath();
-        ctx.arc(x + w / 4, y + h / 2, Math.min(w, h) / 4, 0, Math.PI * 4);
-        ctx.fillStyle = denyColor;
-        ctx.fill();
-        const fontSize = Math.min(w, h) * 0.3;
-        ctx.font = `${fontSize}px Courier New`;
-        ctx.fillText("🦄", x + w / 4, y + h / 2);
-    }
-
-    ctx.restore();
 };
