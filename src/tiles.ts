@@ -851,7 +851,7 @@ export const drawMap = (
                 const bl = downLand && leftLand ? CORNER_RADIUS : 0;
                 const br = downLand && rightLand ? CORNER_RADIUS : 0;
 
-                // If this water tile has a land bay corner
+                // If this water tile has a land bay corner, draw the tide effect
                 if (tl > 0 || tr > 0 || bl > 0 || br > 0) {
                     // Synchronized tide size to perfectly match Pass 1
                     const tide = Math.sin(time.t * 0.002) * 1.0;
@@ -936,40 +936,9 @@ export const drawMap = (
                         );
                     }
                     cx.fill();
-
-                    // 3. Main Water Layer
-                    cx.fillStyle = waterColor;
-                    cx.beginPath();
-                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [tl, tr, br, bl]);
-                    cx.fill();
-
-                    // If rainbow bridge, draw it here
-                    if (tile?.type === "rainbow") {
-                        if (tile.xCount != null) {
-                            drawRainbowBridge(
-                                cx,
-                                x,
-                                y,
-                                tile.xCount,
-                                TILE_HEIGHT,
-                                RAINBROW_OVERHANG,
-                                RAINBROW_COLORS,
-                            );
-                        } else if (tile.yCount != null) {
-                            drawRainbowBridge(
-                                cx,
-                                x,
-                                y,
-                                tile.yCount,
-                                TILE_WIDTH,
-                                RAINBROW_OVERHANG,
-                                RAINBROW_COLORS,
-                                true, // vertical
-                            );
-                        }
-                    }
                 }
-                // 3. Main Water Layer
+
+                // 3. Main Water Layer (always draw this)
                 cx.fillStyle = waterColor;
                 cx.beginPath();
                 cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [tl, tr, br, bl]);
@@ -1003,7 +972,6 @@ export const drawMap = (
             }
         }
     }
-
     objectsToDraw.push(...objects);
     objectsToDraw.sort((a, b) => a.y + a.height - (b.y + b.height));
 
