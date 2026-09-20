@@ -212,12 +212,12 @@ const createTile = (
                 straw:
                     random() > 0.2
                         ? {
-                            wobblePhase: random(Math.PI),
-                            width: TILE_WIDTH / 16,
-                            height: random(TILE_HEIGHT / 4) + TILE_HEIGHT / 8,
-                            xAdjust: random(TILE_WIDTH),
-                            yAdjust: random(TILE_HEIGHT),
-                        }
+                              wobblePhase: random(Math.PI),
+                              width: TILE_WIDTH / 16,
+                              height: random(TILE_HEIGHT / 4) + TILE_HEIGHT / 8,
+                              xAdjust: random(TILE_WIDTH),
+                              yAdjust: random(TILE_HEIGHT),
+                          }
                         : undefined,
             };
         default:
@@ -657,7 +657,11 @@ export const drawMap = (
             if (tile.object) objectsToDraw.push(tile.object);
 
             // Only process land/rock/start tiles
-            if (tile.type === "land" || tile.type === "rock" || tile?.type === "start") {
+            if (
+                tile.type === "land" ||
+                tile.type === "rock" ||
+                tile?.type === "start"
+            ) {
                 const neighbors = getNeighbors(ix, iy);
 
                 // Check which sides border water (for tide effect)
@@ -681,7 +685,12 @@ export const drawMap = (
                     // 1. Base Green (defines the absolute outer boundary with adjusted corners)
                     cx.fillStyle = landColor;
                     cx.beginPath();
-                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [tl, tr, br, bl]);
+                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [
+                        tl,
+                        tr,
+                        br,
+                        bl,
+                    ]);
                     cx.fill();
 
                     cx.clip();
@@ -718,7 +727,12 @@ export const drawMap = (
                     cx.fillStyle = landColor;
                     cx.beginPath();
                     if (iw_in > 0 && ih_in > 0) {
-                        cx.roundRect(ix_in, iy_in, iw_in, ih_in, [itl, itr, ibr, ibl]);
+                        cx.roundRect(ix_in, iy_in, iw_in, ih_in, [
+                            itl,
+                            itr,
+                            ibr,
+                            ibl,
+                        ]);
                         cx.fill();
                     }
 
@@ -742,7 +756,8 @@ export const drawMap = (
 
                         cx.clip();
 
-                        const cloudX = x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
+                        const cloudX =
+                            x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
 
                         cx.textAlign = "center";
                         cx.textBaseline = "middle";
@@ -763,7 +778,8 @@ export const drawMap = (
                         cx.translate(x + TILE_WIDTH / 2, y + TILE_HEIGHT / 2);
                         if (tile.arrow === Arrow.Right) cx.rotate(Math.PI / 2);
                         else if (tile.arrow === Arrow.Down) cx.rotate(Math.PI);
-                        else if (tile.arrow === Arrow.Left) cx.rotate(-Math.PI / 2);
+                        else if (tile.arrow === Arrow.Left)
+                            cx.rotate(-Math.PI / 2);
 
                         cx.fillStyle = arrowColor;
                         cx.beginPath();
@@ -780,7 +796,12 @@ export const drawMap = (
                     cx.save();
                     cx.fillStyle = landColor;
                     cx.beginPath();
-                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [CORNER_RADIUS, CORNER_RADIUS, CORNER_RADIUS, CORNER_RADIUS]);
+                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [
+                        CORNER_RADIUS,
+                        CORNER_RADIUS,
+                        CORNER_RADIUS,
+                        CORNER_RADIUS,
+                    ]);
                     cx.fill();
                     cx.restore();
 
@@ -788,11 +809,18 @@ export const drawMap = (
                     if (tile?.type === "start") {
                         cx.save();
                         cx.beginPath();
-                        cx.roundRect(x + 1, y + 1, TILE_WIDTH - 2, TILE_HEIGHT - 2, 6);
+                        cx.roundRect(
+                            x + 1,
+                            y + 1,
+                            TILE_WIDTH - 2,
+                            TILE_HEIGHT - 2,
+                            6,
+                        );
                         cx.fillStyle = "#5c94e0";
                         cx.fill();
                         cx.clip();
-                        const cloudX = x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
+                        const cloudX =
+                            x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
                         cx.textAlign = "center";
                         cx.textBaseline = "middle";
                         cx.font = `${TILE_WIDTH * 0.75}px sans-serif`;
@@ -810,7 +838,8 @@ export const drawMap = (
                         cx.translate(x + TILE_WIDTH / 2, y + TILE_HEIGHT / 2);
                         if (tile.arrow === Arrow.Right) cx.rotate(Math.PI / 2);
                         else if (tile.arrow === Arrow.Down) cx.rotate(Math.PI);
-                        else if (tile.arrow === Arrow.Left) cx.rotate(-Math.PI / 2);
+                        else if (tile.arrow === Arrow.Left)
+                            cx.rotate(-Math.PI / 2);
 
                         cx.fillStyle = arrowColor;
                         cx.beginPath();
@@ -839,9 +868,12 @@ export const drawMap = (
 
                 // Check which sides border land (for bay curve effect)
                 const upLand = neighbors.up && !isWaterTile(neighbors.up.type);
-                const downLand = neighbors.down && !isWaterTile(neighbors.down.type);
-                const leftLand = neighbors.left && !isWaterTile(neighbors.left.type);
-                const rightLand = neighbors.right && !isWaterTile(neighbors.right.type);
+                const downLand =
+                    neighbors.down && !isWaterTile(neighbors.down.type);
+                const leftLand =
+                    neighbors.left && !isWaterTile(neighbors.left.type);
+                const rightLand =
+                    neighbors.right && !isWaterTile(neighbors.right.type);
 
                 // Determine corner radius for each corner based on land neighbors
                 // A corner gets radius 0 (sharp) if the adjacent side borders WATER or EDGE (same type or out of bounds)
