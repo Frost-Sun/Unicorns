@@ -88,7 +88,12 @@ const RAINBROW_OVERHANG = TILE_WIDTH * 0.2;
 const RAINBROW_COLORS = RainbowColors;
 
 export type TileType =
-    "land" | "rock" | "water" | "start" | "finish" | "rainbow";
+    | "land"
+    | "rock"
+    | "water"
+    | "start"
+    | "finish"
+    | "rainbow";
 
 export const enum Arrow {
     Up = 1,
@@ -424,7 +429,6 @@ const digVertically = (
 };
 
 const drawRainbowBridge = (
-    ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
     tile: Tile,
@@ -436,8 +440,8 @@ const drawRainbowBridge = (
         return;
     }
 
-    ctx.save();
-    ctx.globalAlpha = 0.8;
+    cx.save();
+    cx.globalAlpha = 0.8;
 
     const vertical = tile.yCount != null;
 
@@ -447,30 +451,26 @@ const drawRainbowBridge = (
     const height = vertical ? count * TILE_HEIGHT + overhang * 2 : TILE_HEIGHT;
 
     for (let i = 0; i < colors.length; i++) {
-        ctx.fillStyle = colors[i];
-        ctx.fillRect(
+        cx.fillStyle = colors[i];
+        cx.fillRect(
             vertical ? startX + i * (width / colors.length) : startX,
             vertical ? startY : startY + i * (height / colors.length),
             vertical ? Math.max(1, width / colors.length) : width,
             vertical ? height : Math.max(1, height / colors.length),
         );
     }
-    ctx.restore();
+    cx.restore();
 };
 
-const drawSplash = (
-    ctx: CanvasRenderingContext2D,
-    o: GameObject,
-    phase: number,
-): void => {
+const drawSplash = (o: GameObject, phase: number): void => {
     const rippleR = TILE_WIDTH * 0.25 * phase;
     const rippleAlpha = 1 - phase;
 
-    ctx.beginPath();
-    ctx.arc(o.x, o.y, rippleR, 0, 2 * Math.PI);
-    ctx.lineWidth = 0.3 + rippleAlpha * 0.5;
-    ctx.strokeStyle = `rgba(150, 220, 255, ${rippleAlpha})`;
-    ctx.stroke();
+    cx.beginPath();
+    cx.arc(o.x, o.y, rippleR, 0, 2 * Math.PI);
+    cx.lineWidth = 0.3 + rippleAlpha * 0.5;
+    cx.strokeStyle = `rgba(150, 220, 255, ${rippleAlpha})`;
+    cx.stroke();
 
     const jumpHeight = Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.35);
     const splashY = o.y - jumpHeight;
@@ -478,61 +478,57 @@ const drawSplash = (
     const splashRadius = 1.0 + Math.sin(phase * Math.PI) * 1.0;
     const splashAlpha = 1 - Math.pow(phase, 2);
 
-    ctx.fillStyle = `rgba(180, 230, 255, ${splashAlpha})`;
+    cx.fillStyle = `rgba(180, 230, 255, ${splashAlpha})`;
 
-    ctx.beginPath();
-    ctx.arc(o.x, splashY, splashRadius, 0, 2 * Math.PI);
-    ctx.fill();
+    cx.beginPath();
+    cx.arc(o.x, splashY, splashRadius, 0, 2 * Math.PI);
+    cx.fill();
 
     const sideSpread = phase * 8;
     const sideHeight = Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.2);
 
-    ctx.beginPath();
-    ctx.arc(
+    cx.beginPath();
+    cx.arc(
         o.x - sideSpread,
         o.y - sideHeight,
         splashRadius * 0.5,
         0,
         2 * Math.PI,
     );
-    ctx.arc(
+    cx.arc(
         o.x + sideSpread,
         o.y - sideHeight,
         splashRadius * 0.5,
         0,
         2 * Math.PI,
     );
-    ctx.fill();
+    cx.fill();
 };
 
-const drawFinish = (
-    ctx: CanvasRenderingContext2D,
-    o: GameObject,
-    time: TimeStep,
-): void => {
+const drawFinish = (o: GameObject, time: TimeStep): void => {
     const hue = (time.t / 15) % 360;
 
-    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-    ctx.fillRect(o.x, o.y + o.height - 4, o.width, 4);
+    cx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    cx.fillRect(o.x, o.y + o.height - 4, o.width, 4);
 
-    ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
-    ctx.fillRect(
+    cx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
+    cx.fillRect(
         o.x,
         o.y - TILE_UPWARD_HEIGHT,
         o.width,
         o.height + TILE_UPWARD_HEIGHT,
     );
 
-    ctx.fillStyle = `hsla(${hue}, 70%, 65%, 0.8)`;
-    ctx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height);
+    cx.fillStyle = `hsla(${hue}, 70%, 65%, 0.8)`;
+    cx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height);
 
     const hover = Math.sin(time.t / 200) * 3;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = `${o.width * 0.6}px sans-serif`;
+    cx.textAlign = "center";
+    cx.textBaseline = "middle";
+    cx.font = `${o.width * 0.6}px sans-serif`;
 
-    ctx.fillStyle = "rgb(180, 20, 20)";
-    ctx.fillText(
+    cx.fillStyle = "rgb(180, 20, 20)";
+    cx.fillText(
         "❤",
         o.x + o.width / 2,
         o.y - TILE_UPWARD_HEIGHT + o.height / 2 - 4 + hover,
@@ -540,7 +536,6 @@ const drawFinish = (
 };
 
 const drawHighlightedArea = (
-    ctx: CanvasRenderingContext2D,
     area: TileArea,
     tileWidth: number,
     tileHeight: number,
@@ -556,49 +551,48 @@ const drawHighlightedArea = (
     const y = area.iy * tileHeight;
     const isAllowed = mode === HighlightMode.Allow;
 
-    ctx.save();
+    cx.save();
 
-    ctx.strokeStyle = isAllowed ? highlightColor : denyColor;
+    cx.strokeStyle = isAllowed ? highlightColor : denyColor;
 
-    ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+    cx.fillStyle = "rgba(0, 0, 0, 0.1)";
 
     if (isAllowed) {
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = highlightColor;
+        cx.fillRect(x, y, w, h);
+        cx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        cx.textAlign = "center";
+        cx.textBaseline = "middle";
+        cx.fillStyle = highlightColor;
         const fontSize = Math.min(w, h) * 0.4;
-        ctx.font = `${fontSize}px Courier New`;
-        ctx.fillText(
+        cx.font = `${fontSize}px Courier New`;
+        cx.fillText(
             selectedActionIndex != null ? tools[selectedActionIndex].text : "",
             x + w / 2,
             y + h / 2,
         );
     } else if (selectedActionIndex && selectedActionIndex < 7) {
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-        ctx.beginPath();
-        ctx.moveTo(x + 2, y + 2);
-        ctx.lineTo(x + w - 2, y + h - 2);
-        ctx.moveTo(x + w - 2, y + 2);
-        ctx.lineTo(x + 2, y + h - 2);
-        ctx.stroke();
+        cx.fillRect(x, y, w, h);
+        cx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        cx.beginPath();
+        cx.moveTo(x + 2, y + 2);
+        cx.lineTo(x + w - 2, y + h - 2);
+        cx.moveTo(x + w - 2, y + 2);
+        cx.lineTo(x + 2, y + h - 2);
+        cx.stroke();
     } else {
-        ctx.beginPath();
-        ctx.arc(x + w / 4, y + h / 2, Math.min(w, h) / 4, 0, Math.PI * 4);
-        ctx.fillStyle = denyColor;
-        ctx.fill();
+        cx.beginPath();
+        cx.arc(x + w / 4, y + h / 2, Math.min(w, h) / 4, 0, Math.PI * 4);
+        cx.fillStyle = denyColor;
+        cx.fill();
         const fontSize = Math.min(w, h) * 0.3;
-        ctx.font = `${fontSize}px Courier New`;
-        ctx.fillText("🦄", x + w / 4, y + h / 2);
+        cx.font = `${fontSize}px Courier New`;
+        cx.fillText("🦄", x + w / 4, y + h / 2);
     }
 
-    ctx.restore();
+    cx.restore();
 };
 
 const drawTileDecorations = (
-    cx: CanvasRenderingContext2D,
     x: number,
     y: number,
     tile: Tile,
@@ -776,15 +770,7 @@ export const drawMap = (
                 }
 
                 // Draw decorations (shared logic)
-                drawTileDecorations(
-                    cx,
-                    x,
-                    y,
-                    tile,
-                    time,
-                    strawColor,
-                    arrowColor,
-                );
+                drawTileDecorations(x, y, tile, time, strawColor, arrowColor);
             }
         }
     }
@@ -921,7 +907,6 @@ export const drawMap = (
 
             if (tile?.type === "rainbow") {
                 drawRainbowBridge(
-                    cx,
                     x,
                     y,
                     tile,
@@ -968,7 +953,7 @@ export const drawMap = (
                 if (phase > 1) {
                     o.toDelete = true;
                 } else {
-                    drawSplash(cx, o, phase);
+                    drawSplash(o, phase);
                 }
                 break;
             }
@@ -985,7 +970,7 @@ export const drawMap = (
                 break;
             }
             case "finish": {
-                drawFinish(cx, o, time);
+                drawFinish(o, time);
                 break;
             }
         }
@@ -994,7 +979,6 @@ export const drawMap = (
     // PASS 5: Draw highlighted area
     if (highlightedArea) {
         drawHighlightedArea(
-            cx,
             highlightedArea,
             TILE_WIDTH,
             TILE_HEIGHT,
