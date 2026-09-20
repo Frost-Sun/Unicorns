@@ -441,35 +441,23 @@ const drawRainbowBridge = (
 
     const vertical = tile.yCount != null;
 
-    // Calculate dimensions based on direction
     const startX = vertical ? x : x - overhang;
     const startY = vertical ? y - overhang : y;
     const width = vertical ? TILE_WIDTH : count * TILE_HEIGHT + overhang * 2;
     const height = vertical ? count * TILE_HEIGHT + overhang * 2 : TILE_HEIGHT;
 
-    // Draw each color band as a separate rectangle
     for (let i = 0; i < colors.length; i++) {
         ctx.fillStyle = colors[i];
-
-        if (vertical) {
-            ctx.fillRect(
-                startX + i * (width / colors.length),
-                startY,
-                Math.max(1, width / colors.length),
-                height,
-            );
-        } else {
-            ctx.fillRect(
-                startX,
-                startY + i * (height / colors.length),
-                width,
-                Math.max(1, height / colors.length),
-            );
-        }
+        ctx.fillRect(
+            vertical ? startX + i * (width / colors.length) : startX,
+            vertical ? startY : startY + i * (height / colors.length),
+            vertical ? Math.max(1, width / colors.length) : width,
+            vertical ? height : Math.max(1, height / colors.length),
+        );
     }
-
     ctx.restore();
 };
+
 const drawSplash = (
     ctx: CanvasRenderingContext2D,
     o: GameObject,
@@ -953,19 +941,7 @@ export const drawMap = (
                     cx.fill();
                 }
 
-                // If rainbow bridge, draw it here
-                if (tile?.type === "rainbow") {
-                    if (tile.xCount != null || tile.yCount != null) {
-                        drawRainbowBridge(
-                            cx,
-                            x,
-                            y,
-                            tile,
-                            RAINBROW_OVERHANG,
-                            RAINBROW_COLORS,
-                        );
-                    }
-                } else if (tile?.type === "water") {
+                if (tile?.type === "water") {
                     cx.fillStyle = waterColor;
                     cx.beginPath();
                     cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [
@@ -975,6 +951,17 @@ export const drawMap = (
                         bl,
                     ]);
                     cx.fill();
+                }
+
+                if (tile?.type === "rainbow") {
+                    drawRainbowBridge(
+                        cx,
+                        x,
+                        y,
+                        tile,
+                        RAINBROW_OVERHANG,
+                        RAINBROW_COLORS,
+                    );
                 }
             }
         }
