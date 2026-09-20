@@ -599,6 +599,59 @@ const drawHighlightedArea = (
     ctx.restore();
 };
 
+const drawTileDecorations = (
+    cx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    tile: Tile,
+    time: TimeStep,
+    strawColor: string | undefined,
+    arrowColor: string,
+): void => {
+    // Draw cloud for start tiles
+    if (tile?.type === "start") {
+        cx.save();
+        cx.beginPath();
+        cx.roundRect(x + 1, y + 1, TILE_WIDTH - 2, TILE_HEIGHT - 2, 6);
+        cx.fillStyle = "#5c94e0";
+        cx.fill();
+        cx.clip();
+
+        const cloudX = x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
+        cx.textAlign = "center";
+        cx.textBaseline = "middle";
+        cx.font = `${TILE_WIDTH * 0.75}px sans-serif`;
+        cx.fillText("☁️", cloudX, y + TILE_HEIGHT / 2);
+
+        cx.restore();
+    }
+
+    // Draw straw
+    if (strawColor && tile.straw) {
+        cx.fillStyle = strawColor;
+        renderStraw(x, y, tile.straw, time.t);
+    }
+
+    // Draw arrow
+    if (tile.arrow != null) {
+        cx.save();
+        cx.translate(x + TILE_WIDTH / 2, y + TILE_HEIGHT / 2);
+        if (tile.arrow === Arrow.Right) cx.rotate(Math.PI / 2);
+        else if (tile.arrow === Arrow.Down) cx.rotate(Math.PI);
+        else if (tile.arrow === Arrow.Left) cx.rotate(-Math.PI / 2);
+
+        cx.fillStyle = arrowColor;
+        cx.beginPath();
+        const qw = TILE_WIDTH / 4;
+        const qh = TILE_HEIGHT / 4;
+        cx.moveTo(-qw, qh);
+        cx.lineTo(0, -qh);
+        cx.lineTo(qw, qh);
+        cx.fill();
+        cx.restore();
+    }
+};
+
 export const drawMap = (
     time: TimeStep,
     map: TileMap<Tile>,
@@ -654,11 +707,11 @@ export const drawMap = (
                 const br = isW(down) && isW(right) && isW(downRight) ? r : 0;
                 const bl = isW(down) && isW(left) && isW(downLeft) ? r : 0;
 
-                // Draw Water background for outer capes so the rounded corners reveal water
-                if (tl === 0 || tr === 0 || bl === 0 || br === 0) {
-                    cx.save();
+                cx.save();
 
-                    // 1. Base Green (defines the absolute outer boundary with adjusted corners)
+                // Draw land tile with appropriate rounding
+                if (tl === 0 || tr === 0 || bl === 0 || br === 0) {
+                    // Has water neighbors - use dynamic corner radii
                     cx.fillStyle = landColor;
                     cx.beginPath();
                     cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [
@@ -671,11 +724,10 @@ export const drawMap = (
 
                     cx.clip();
 
-                    // 2. Tide layer (covers the whole clipped tile)
+                    // Draw tide and inner green
                     cx.fillStyle = `rgb(40, 130, ${150 + (ix * iy) / 2})`;
                     cx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
 
-                    // 3. Inner Green (shrinks away from water to reveal the Tide)
                     let ix_in = x,
                         iy_in = y,
                         iw_in = TILE_WIDTH,
@@ -713,63 +765,8 @@ export const drawMap = (
                     }
 
                     cx.restore();
-
-                    // Continue with decorations
-                    if (tile?.type === "start") {
-                        cx.save();
-
-                        cx.beginPath();
-                        cx.roundRect(
-                            x + 1,
-                            y + 1,
-                            TILE_WIDTH - 2,
-                            TILE_HEIGHT - 2,
-                            6,
-                        );
-
-                        cx.fillStyle = "#5c94e0";
-                        cx.fill();
-
-                        cx.clip();
-
-                        const cloudX =
-                            x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
-
-                        cx.textAlign = "center";
-                        cx.textBaseline = "middle";
-                        cx.font = `${TILE_WIDTH * 0.75}px sans-serif`;
-                        cx.fillText("☁️", cloudX, y + TILE_HEIGHT / 2);
-
-                        cx.restore();
-                    }
-
-                    // 4. Decorations
-                    if (strawColor && tile.straw) {
-                        cx.fillStyle = strawColor;
-                        renderStraw(x, y, tile.straw, time.t);
-                    }
-
-                    if (tile.arrow != null) {
-                        cx.save();
-                        cx.translate(x + TILE_WIDTH / 2, y + TILE_HEIGHT / 2);
-                        if (tile.arrow === Arrow.Right) cx.rotate(Math.PI / 2);
-                        else if (tile.arrow === Arrow.Down) cx.rotate(Math.PI);
-                        else if (tile.arrow === Arrow.Left)
-                            cx.rotate(-Math.PI / 2);
-
-                        cx.fillStyle = arrowColor;
-                        cx.beginPath();
-                        const qw = TILE_WIDTH / 4;
-                        const qh = TILE_HEIGHT / 4;
-                        cx.moveTo(-qw, qh);
-                        cx.lineTo(0, -qh);
-                        cx.lineTo(qw, qh);
-                        cx.fill();
-                        cx.restore();
-                    }
                 } else {
-                    // No water neighbors - draw plain land tile with full corners (all rounded)
-                    cx.save();
+                    // No water neighbors - use fixed corner radius
                     cx.fillStyle = landColor;
                     cx.beginPath();
                     cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [
@@ -780,54 +777,18 @@ export const drawMap = (
                     ]);
                     cx.fill();
                     cx.restore();
-
-                    // Continue with decorations
-                    if (tile?.type === "start") {
-                        cx.save();
-                        cx.beginPath();
-                        cx.roundRect(
-                            x + 1,
-                            y + 1,
-                            TILE_WIDTH - 2,
-                            TILE_HEIGHT - 2,
-                            6,
-                        );
-                        cx.fillStyle = "#5c94e0";
-                        cx.fill();
-                        cx.clip();
-                        const cloudX =
-                            x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
-                        cx.textAlign = "center";
-                        cx.textBaseline = "middle";
-                        cx.font = `${TILE_WIDTH * 0.75}px sans-serif`;
-                        cx.fillText("☁️", cloudX, y + TILE_HEIGHT / 2);
-                        cx.restore();
-                    }
-
-                    if (strawColor && tile.straw) {
-                        cx.fillStyle = strawColor;
-                        renderStraw(x, y, tile.straw, time.t);
-                    }
-
-                    if (tile.arrow != null) {
-                        cx.save();
-                        cx.translate(x + TILE_WIDTH / 2, y + TILE_HEIGHT / 2);
-                        if (tile.arrow === Arrow.Right) cx.rotate(Math.PI / 2);
-                        else if (tile.arrow === Arrow.Down) cx.rotate(Math.PI);
-                        else if (tile.arrow === Arrow.Left)
-                            cx.rotate(-Math.PI / 2);
-
-                        cx.fillStyle = arrowColor;
-                        cx.beginPath();
-                        const qw = TILE_WIDTH / 4;
-                        const qh = TILE_HEIGHT / 4;
-                        cx.moveTo(-qw, qh);
-                        cx.lineTo(0, -qh);
-                        cx.lineTo(qw, qh);
-                        cx.fill();
-                        cx.restore();
-                    }
                 }
+
+                // Draw decorations (shared logic)
+                drawTileDecorations(
+                    cx,
+                    x,
+                    y,
+                    tile,
+                    time,
+                    strawColor,
+                    arrowColor,
+                );
             }
         }
     }
