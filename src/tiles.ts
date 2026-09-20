@@ -82,8 +82,18 @@ export const TILE_HEIGHT = 10;
 
 export const TILE_UPWARD_HEIGHT = TILE_HEIGHT / 2;
 
+const TIDE_AMPLITUDE = 1.0;
+const CORNER_RADIUS = 3;
+const RAINBROW_OVERHANG = TILE_WIDTH * 0.2;
+const RAINBROW_COLORS = RainbowColors;
+
 export type TileType =
-    "land" | "rock" | "water" | "start" | "finish" | "rainbow";
+    | "land"
+    | "rock"
+    | "water"
+    | "start"
+    | "finish"
+    | "rainbow";
 
 export const enum Arrow {
     Up = 1,
@@ -418,6 +428,222 @@ const digVertically = (
     }
 };
 
+const drawRainbowBridge = (
+    x: number,
+    y: number,
+    tile: Tile,
+    overhang: number,
+    colors: readonly string[],
+): void => {
+    const count = tile.xCount != null ? tile.xCount : tile.yCount;
+    if (!count || count === 0) {
+        return;
+    }
+
+    cx.save();
+    cx.globalAlpha = 0.8;
+
+    const vertical = tile.yCount != null;
+
+    const startX = vertical ? x : x - overhang;
+    const startY = vertical ? y - overhang : y;
+    const width = vertical ? TILE_WIDTH : count * TILE_HEIGHT + overhang * 2;
+    const height = vertical ? count * TILE_HEIGHT + overhang * 2 : TILE_HEIGHT;
+
+    for (let i = 0; i < colors.length; i++) {
+        cx.fillStyle = colors[i];
+        cx.fillRect(
+            vertical ? startX + i * (width / colors.length) : startX,
+            vertical ? startY : startY + i * (height / colors.length),
+            vertical ? Math.max(1, width / colors.length) : width,
+            vertical ? height : Math.max(1, height / colors.length),
+        );
+    }
+    cx.restore();
+};
+
+const drawSplash = (o: GameObject, phase: number): void => {
+    const rippleR = TILE_WIDTH * 0.25 * phase;
+    const rippleAlpha = 1 - phase;
+
+    cx.beginPath();
+    cx.arc(o.x, o.y, rippleR, 0, 2 * Math.PI);
+    cx.lineWidth = 0.3 + rippleAlpha * 0.5;
+    cx.strokeStyle = `rgba(150, 220, 255, ${rippleAlpha})`;
+    cx.stroke();
+
+    const jumpHeight = Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.35);
+    const splashY = o.y - jumpHeight;
+
+    const splashRadius = 1.0 + Math.sin(phase * Math.PI) * 1.0;
+    const splashAlpha = 1 - Math.pow(phase, 2);
+
+    cx.fillStyle = `rgba(180, 230, 255, ${splashAlpha})`;
+
+    cx.beginPath();
+    cx.arc(o.x, splashY, splashRadius, 0, 2 * Math.PI);
+    cx.fill();
+
+    const sideSpread = phase * 8;
+    const sideHeight = Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.2);
+
+    cx.beginPath();
+    cx.arc(
+        o.x - sideSpread,
+        o.y - sideHeight,
+        splashRadius * 0.5,
+        0,
+        2 * Math.PI,
+    );
+    cx.arc(
+        o.x + sideSpread,
+        o.y - sideHeight,
+        splashRadius * 0.5,
+        0,
+        2 * Math.PI,
+    );
+    cx.fill();
+};
+
+const drawFinish = (o: GameObject, time: TimeStep): void => {
+    const hue = (time.t / 15) % 360;
+
+    cx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    cx.fillRect(o.x, o.y + o.height - 4, o.width, 4);
+
+    cx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
+    cx.fillRect(
+        o.x,
+        o.y - TILE_UPWARD_HEIGHT,
+        o.width,
+        o.height + TILE_UPWARD_HEIGHT,
+    );
+
+    cx.fillStyle = `hsla(${hue}, 70%, 65%, 0.8)`;
+    cx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height);
+
+    const hover = Math.sin(time.t / 200) * 3;
+    cx.textAlign = "center";
+    cx.textBaseline = "middle";
+    cx.font = `${o.width * 0.6}px sans-serif`;
+
+    cx.fillStyle = "rgb(180, 20, 20)";
+    cx.fillText(
+        "❤",
+        o.x + o.width / 2,
+        o.y - TILE_UPWARD_HEIGHT + o.height / 2 - 4 + hover,
+    );
+};
+
+const drawHighlightedArea = (
+    area: TileArea,
+    tileWidth: number,
+    tileHeight: number,
+    mode: HighlightMode,
+    selectedActionIndex: number | undefined,
+    tools: { text: string }[],
+    highlightColor: string,
+    denyColor: string,
+): void => {
+    const w = area.xCount * tileWidth;
+    const h = area.yCount * tileHeight;
+    const x = area.ix * tileWidth;
+    const y = area.iy * tileHeight;
+    const isAllowed = mode === HighlightMode.Allow;
+
+    cx.save();
+
+    cx.strokeStyle = isAllowed ? highlightColor : denyColor;
+
+    cx.fillStyle = "rgba(0, 0, 0, 0.1)";
+
+    if (isAllowed) {
+        cx.fillRect(x, y, w, h);
+        cx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        cx.textAlign = "center";
+        cx.textBaseline = "middle";
+        cx.fillStyle = highlightColor;
+        const fontSize = Math.min(w, h) * 0.4;
+        cx.font = `${fontSize}px Courier New`;
+        cx.fillText(
+            selectedActionIndex != null ? tools[selectedActionIndex].text : "",
+            x + w / 2,
+            y + h / 2,
+        );
+    } else if (selectedActionIndex && selectedActionIndex < 7) {
+        cx.fillRect(x, y, w, h);
+        cx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        cx.beginPath();
+        cx.moveTo(x + 2, y + 2);
+        cx.lineTo(x + w - 2, y + h - 2);
+        cx.moveTo(x + w - 2, y + 2);
+        cx.lineTo(x + 2, y + h - 2);
+        cx.stroke();
+    } else {
+        cx.beginPath();
+        cx.arc(x + w / 4, y + h / 2, Math.min(w, h) / 4, 0, Math.PI * 4);
+        cx.fillStyle = denyColor;
+        cx.fill();
+        const fontSize = Math.min(w, h) * 0.3;
+        cx.font = `${fontSize}px Courier New`;
+        cx.fillText("🦄", x + w / 4, y + h / 2);
+    }
+
+    cx.restore();
+};
+
+const drawTileDecorations = (
+    x: number,
+    y: number,
+    tile: Tile,
+    time: TimeStep,
+    strawColor: string | undefined,
+    arrowColor: string,
+): void => {
+    // Draw cloud for start tiles
+    if (tile?.type === "start") {
+        cx.save();
+        cx.beginPath();
+        cx.roundRect(x + 1, y + 1, TILE_WIDTH - 2, TILE_HEIGHT - 2, 6);
+        cx.fillStyle = "#5c94e0";
+        cx.fill();
+        cx.clip();
+
+        const cloudX = x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
+        cx.textAlign = "center";
+        cx.textBaseline = "middle";
+        cx.font = `${TILE_WIDTH * 0.75}px sans-serif`;
+        cx.fillText("☁️", cloudX, y + TILE_HEIGHT / 2);
+
+        cx.restore();
+    }
+
+    // Draw straw
+    if (strawColor && tile.straw) {
+        cx.fillStyle = strawColor;
+        renderStraw(x, y, tile.straw, time.t);
+    }
+
+    // Draw arrow
+    if (tile.arrow != null) {
+        cx.save();
+        cx.translate(x + TILE_WIDTH / 2, y + TILE_HEIGHT / 2);
+        if (tile.arrow === Arrow.Right) cx.rotate(Math.PI / 2);
+        else if (tile.arrow === Arrow.Down) cx.rotate(Math.PI);
+        else if (tile.arrow === Arrow.Left) cx.rotate(-Math.PI / 2);
+
+        cx.fillStyle = arrowColor;
+        cx.beginPath();
+        const qw = TILE_WIDTH / 4;
+        const qh = TILE_HEIGHT / 4;
+        cx.moveTo(-qw, qh);
+        cx.lineTo(0, -qh);
+        cx.lineTo(qw, qh);
+        cx.fill();
+        cx.restore();
+    }
+};
+
 export const drawMap = (
     time: TimeStep,
     map: TileMap<Tile>,
@@ -437,6 +663,8 @@ export const drawMap = (
     const highlightColor = HighlightColorByTheme[theme];
     const denyColor = DenyColorByTheme[theme];
 
+    const tide = Math.sin(time.t * 0.002) * TIDE_AMPLITUDE;
+
     // PASS 1: Draw all Land Tiles
     for (let iy = 0; iy < map.yCount; iy++) {
         const y = iy * TILE_HEIGHT;
@@ -447,6 +675,7 @@ export const drawMap = (
             if (!tile) continue;
             if (tile.object) objectsToDraw.push(tile.object);
 
+            // Only process land/rock/start tiles
             if (
                 tile.type === "land" ||
                 tile.type === "rock" ||
@@ -470,117 +699,78 @@ export const drawMap = (
                 const br = isW(down) && isW(right) && isW(downRight) ? r : 0;
                 const bl = isW(down) && isW(left) && isW(downLeft) ? r : 0;
 
-                // Draw Water background for outer capes so the rounded corners reveal water
-                if (tl > 0 || tr > 0 || br > 0 || bl > 0) {
-                    cx.fillStyle = waterColor;
-                    cx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
-                }
-
                 cx.save();
 
-                // 1. Base Green (defines the absolute outer boundary)
-                cx.fillStyle = landColor;
-
-                cx.beginPath();
-                cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [tl, tr, br, bl]);
-                cx.fill();
-
-                cx.clip();
-
-                // 2. Tide layer (covers the whole clipped tile)
-                const tide = Math.sin(time.t * 0.002) * 1.0;
-                cx.fillStyle = `rgb(40, 130, ${150 + (ix * iy) / 2})`;
-                cx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
-
-                // 3. Inner Green (shrinks away from water to reveal the Tide)
-                let ix_in = x,
-                    iy_in = y,
-                    iw_in = TILE_WIDTH,
-                    ih_in = TILE_HEIGHT;
-                if (isW(up)) {
-                    iy_in += tide;
-                    ih_in -= tide;
-                }
-                if (isW(down)) {
-                    ih_in -= tide;
-                }
-                if (isW(left)) {
-                    ix_in += tide;
-                    iw_in -= tide;
-                }
-                if (isW(right)) {
-                    iw_in -= tide;
-                }
-
-                const itl = tl > 0 ? Math.max(0, tl - tide) : 0;
-                const itr = tr > 0 ? Math.max(0, tr - tide) : 0;
-                const ibr = br > 0 ? Math.max(0, br - tide) : 0;
-                const ibl = bl > 0 ? Math.max(0, bl - tide) : 0;
-
-                cx.fillStyle = landColor;
-                cx.beginPath();
-                if (iw_in > 0 && ih_in > 0) {
-                    cx.roundRect(ix_in, iy_in, iw_in, ih_in, [
-                        itl,
-                        itr,
-                        ibr,
-                        ibl,
-                    ]);
-                    cx.fill();
-                }
-
-                cx.restore();
-
-                if (tile?.type === "start") {
-                    cx.save();
-
+                // Draw land tile with appropriate rounding
+                if (tl === 0 || tr === 0 || bl === 0 || br === 0) {
+                    cx.fillStyle = landColor;
                     cx.beginPath();
-                    cx.roundRect(
-                        x + 1,
-                        y + 1,
-                        TILE_WIDTH - 2,
-                        TILE_HEIGHT - 2,
-                        6,
-                    );
-
-                    cx.fillStyle = "#5c94e0";
+                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [
+                        tl,
+                        tr,
+                        br,
+                        bl,
+                    ]);
                     cx.fill();
 
                     cx.clip();
 
-                    const cloudX = x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
+                    // Draw tide and inner green
+                    cx.fillStyle = `rgb(40, 130, ${150 + (ix * iy) / 2})`;
+                    cx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
 
-                    cx.textAlign = "center";
-                    cx.textBaseline = "middle";
-                    cx.font = `${TILE_WIDTH * 0.75}px sans-serif`;
-                    cx.fillText("☁️", cloudX, y + TILE_HEIGHT / 2);
+                    let ix_in = x,
+                        iy_in = y,
+                        iw_in = TILE_WIDTH,
+                        ih_in = TILE_HEIGHT;
+                    if (isW(up)) {
+                        iy_in += tide;
+                        ih_in -= tide;
+                    }
+                    if (isW(down)) {
+                        ih_in -= tide;
+                    }
+                    if (isW(left)) {
+                        ix_in += tide;
+                        iw_in -= tide;
+                    }
+                    if (isW(right)) {
+                        iw_in -= tide;
+                    }
+
+                    const itl = tl > 0 ? Math.max(0, tl - tide) : 0;
+                    const itr = tr > 0 ? Math.max(0, tr - tide) : 0;
+                    const ibr = br > 0 ? Math.max(0, br - tide) : 0;
+                    const ibl = bl > 0 ? Math.max(0, bl - tide) : 0;
+
+                    cx.fillStyle = landColor;
+                    cx.beginPath();
+                    if (iw_in > 0 && ih_in > 0) {
+                        cx.roundRect(ix_in, iy_in, iw_in, ih_in, [
+                            itl,
+                            itr,
+                            ibr,
+                            ibl,
+                        ]);
+                        cx.fill();
+                    }
 
                     cx.restore();
-                }
-
-                // 4. Decorations
-                if (strawColor && tile.straw) {
-                    cx.fillStyle = strawColor;
-                    renderStraw(x, y, tile.straw, time.t);
-                }
-
-                if (tile.arrow != null) {
-                    cx.save();
-                    cx.translate(x + TILE_WIDTH / 2, y + TILE_HEIGHT / 2);
-                    if (tile.arrow === Arrow.Right) cx.rotate(Math.PI / 2);
-                    else if (tile.arrow === Arrow.Down) cx.rotate(Math.PI);
-                    else if (tile.arrow === Arrow.Left) cx.rotate(-Math.PI / 2);
-
-                    cx.fillStyle = arrowColor;
+                } else {
+                    cx.fillStyle = landColor;
                     cx.beginPath();
-                    const qw = TILE_WIDTH / 4;
-                    const qh = TILE_HEIGHT / 4;
-                    cx.moveTo(-qw, qh);
-                    cx.lineTo(0, -qh);
-                    cx.lineTo(qw, qh);
+                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [
+                        CORNER_RADIUS,
+                        CORNER_RADIUS,
+                        CORNER_RADIUS,
+                        CORNER_RADIUS,
+                    ]);
                     cx.fill();
                     cx.restore();
                 }
+
+                // Draw decorations (shared logic)
+                drawTileDecorations(x, y, tile, time, strawColor, arrowColor);
             }
         }
     }
@@ -609,45 +799,47 @@ export const drawMap = (
 
                 // If this water tile has a land bay corner
                 if (tl > 0 || tr > 0 || br > 0 || bl > 0) {
-                    // Synchronized tide size to perfectly match Pass 1
                     const tide = Math.sin(time.t * 0.002) * 1.0;
 
-                    // 1. Spillover Green Base (expanded safely, no alpha overlap issues)
+                    // 1. Spillover Green Base
                     cx.fillStyle = landColor;
-                    if (tl > 0)
+                    if (tl > 0) {
                         cx.fillRect(
                             x - tide - 1,
                             y - tide - 1,
                             tl + tide + 1,
                             tl + tide + 1,
                         );
-                    if (tr > 0)
+                    }
+                    if (tr > 0) {
                         cx.fillRect(
                             x + TILE_WIDTH - tr,
                             y - tide - 1,
                             tr + tide + 1,
                             tr + tide + 1,
                         );
-                    if (br > 0)
+                    }
+                    if (br > 0) {
                         cx.fillRect(
                             x + TILE_WIDTH - br,
                             y + TILE_HEIGHT - br,
                             br + tide + 1,
                             br + tide + 1,
                         );
-                    if (bl > 0)
+                    }
+                    if (bl > 0) {
                         cx.fillRect(
                             x - tide - 1,
                             y + TILE_HEIGHT - bl,
                             bl + tide + 1,
                             bl + tide + 1,
                         );
+                    }
 
                     // 2. Concentric Tide Arcs
-                    // Exact mathematical angles (no extensions) to prevent dark overlapping wedges
                     cx.fillStyle = `rgb(40, 130, ${150 + (ix * iy) / 2})`;
-                    cx.beginPath();
 
+                    cx.beginPath();
                     if (tl > 0) {
                         cx.moveTo(x + tl, y + tl);
                         cx.arc(
@@ -691,16 +883,22 @@ export const drawMap = (
                     cx.fill();
                 }
 
-                // 3. Main Water Layer
-                cx.fillStyle = waterColor;
-                cx.beginPath();
-                cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [tl, tr, br, bl]);
-                cx.fill();
+                if (tile?.type === "water") {
+                    cx.fillStyle = waterColor;
+                    cx.beginPath();
+                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [
+                        tl,
+                        tr,
+                        br,
+                        bl,
+                    ]);
+                    cx.fill();
+                }
             }
         }
     }
 
-    // PASS 3: Draw Rainbow Bridges
+    // PASS 3: Draw Rainbow Bridges (after tide arcs)
     for (let iy = 0; iy < map.yCount; iy++) {
         const y = iy * TILE_HEIGHT;
         for (let ix = 0; ix < map.xCount; ix++) {
@@ -708,61 +906,13 @@ export const drawMap = (
             const tile = tileMapGet(map, ix, iy);
 
             if (tile?.type === "rainbow") {
-                // Draw only the first tile, which is
-                // drawn to cover the whole rainbow.
-                if (tile.xCount != null) {
-                    const over = TILE_WIDTH * 0.2;
-                    const step = 1 / RainbowColors.length;
-
-                    cx.save();
-                    cx.globalAlpha = 0.8;
-
-                    const startX = x - over;
-                    const width = tile.xCount * TILE_WIDTH + over * 2;
-                    const gradient = cx.createLinearGradient(
-                        startX,
-                        y,
-                        startX,
-                        y + TILE_HEIGHT,
-                    );
-                    for (let i = 0; i < RainbowColors.length; i++) {
-                        gradient.addColorStop(i * step, RainbowColors[i]);
-                        gradient.addColorStop(
-                            Math.min(1, (i + 1) * step),
-                            RainbowColors[i],
-                        );
-                    }
-                    cx.fillStyle = gradient;
-                    cx.fillRect(startX, y, width, TILE_HEIGHT);
-
-                    cx.restore();
-                } else if (tile.yCount != null) {
-                    const over = TILE_HEIGHT * 0.2;
-                    const step = 1 / RainbowColors.length;
-
-                    cx.save();
-                    cx.globalAlpha = 0.8;
-
-                    const startY = y - over;
-                    const height = tile.yCount * TILE_HEIGHT + over * 2;
-                    const gradient = cx.createLinearGradient(
-                        x,
-                        startY,
-                        x + TILE_WIDTH,
-                        startY,
-                    );
-                    for (let i = 0; i < RainbowColors.length; i++) {
-                        gradient.addColorStop(i * step, RainbowColors[i]);
-                        gradient.addColorStop(
-                            Math.min(1, (i + 1) * step),
-                            RainbowColors[i],
-                        );
-                    }
-                    cx.fillStyle = gradient;
-                    cx.fillRect(x, startY, TILE_WIDTH, height);
-
-                    cx.restore();
-                }
+                drawRainbowBridge(
+                    x,
+                    y,
+                    tile,
+                    RAINBROW_OVERHANG,
+                    RAINBROW_COLORS,
+                );
             }
         }
     }
@@ -803,48 +953,7 @@ export const drawMap = (
                 if (phase > 1) {
                     o.toDelete = true;
                 } else {
-                    const rippleR = TILE_WIDTH * 0.25 * phase;
-                    const rippleAlpha = 1 - phase;
-
-                    cx.beginPath();
-                    cx.arc(o.x, o.y, rippleR, 0, 2 * Math.PI);
-                    cx.lineWidth = 0.3 + rippleAlpha * 0.5;
-                    cx.strokeStyle = `rgba(150, 220, 255, ${rippleAlpha})`;
-                    cx.stroke();
-
-                    const jumpHeight =
-                        Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.35);
-                    const splashY = o.y - jumpHeight;
-
-                    const splashRadius = 1.0 + Math.sin(phase * Math.PI) * 1.0;
-                    const splashAlpha = 1 - Math.pow(phase, 2);
-
-                    cx.fillStyle = `rgba(180, 230, 255, ${splashAlpha})`;
-
-                    cx.beginPath();
-                    cx.arc(o.x, splashY, splashRadius, 0, 2 * Math.PI);
-                    cx.fill();
-
-                    const sideSpread = phase * 8;
-                    const sideHeight =
-                        Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.2);
-
-                    cx.beginPath();
-                    cx.arc(
-                        o.x - sideSpread,
-                        o.y - sideHeight,
-                        splashRadius * 0.5,
-                        0,
-                        2 * Math.PI,
-                    );
-                    cx.arc(
-                        o.x + sideSpread,
-                        o.y - sideHeight,
-                        splashRadius * 0.5,
-                        0,
-                        2 * Math.PI,
-                    );
-                    cx.fill();
+                    drawSplash(o, phase);
                 }
                 break;
             }
@@ -861,34 +970,7 @@ export const drawMap = (
                 break;
             }
             case "finish": {
-                const hue = (time.t / 15) % 360;
-
-                cx.fillStyle = "rgba(0, 0, 0, 0.3)";
-                cx.fillRect(o.x, o.y + o.height - 4, o.width, 4);
-
-                cx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
-                cx.fillRect(
-                    o.x,
-                    o.y - TILE_UPWARD_HEIGHT,
-                    o.width,
-                    o.height + TILE_UPWARD_HEIGHT,
-                );
-
-                cx.fillStyle = `hsla(${hue}, 70%, 65%, 0.8)`;
-                cx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height);
-
-                const hover = Math.sin(time.t / 200) * 3;
-                cx.textAlign = "center";
-                cx.textBaseline = "middle";
-                cx.font = `${o.width * 0.6}px sans-serif`;
-
-                cx.fillStyle = "rgb(180, 20, 20)";
-                cx.fillText(
-                    "❤",
-                    o.x + o.width / 2,
-                    o.y - TILE_UPWARD_HEIGHT + o.height / 2 - 4 + hover,
-                );
-
+                drawFinish(o, time);
                 break;
             }
         }
@@ -896,53 +978,16 @@ export const drawMap = (
 
     // PASS 5: Draw highlighted area
     if (highlightedArea) {
-        const w = highlightedArea.xCount * TILE_WIDTH;
-        const h = highlightedArea.yCount * TILE_HEIGHT;
-        const x = highlightedArea.ix * TILE_WIDTH;
-        const y = highlightedArea.iy * TILE_HEIGHT;
-        const isAllowed = areaHighlightMode === HighlightMode.Allow;
-
-        cx.save();
-
-        cx.strokeStyle = isAllowed ? highlightColor : denyColor;
-
-        cx.fillStyle = "rgba(0, 0, 0, 0.1)";
-
-        if (isAllowed) {
-            cx.fillRect(x, y, w, h);
-            cx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-            cx.textAlign = "center";
-            cx.textBaseline = "middle";
-            cx.fillStyle = highlightColor;
-            const fontSize = Math.min(w, h) * 0.4;
-            cx.font = `${fontSize}px Courier New`;
-            cx.fillText(
-                selectedActionIndex != null
-                    ? tools[selectedActionIndex].text
-                    : "",
-                x + w / 2,
-                y + h / 2,
-            );
-        } else if (selectedActionIndex && selectedActionIndex < 7) {
-            cx.fillRect(x, y, w, h);
-            cx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-            cx.beginPath();
-            cx.moveTo(x + 2, y + 2);
-            cx.lineTo(x + w - 2, y + h - 2);
-            cx.moveTo(x + w - 2, y + 2);
-            cx.lineTo(x + 2, y + h - 2);
-            cx.stroke();
-        } else {
-            cx.beginPath();
-            cx.arc(x + w / 4, y + h / 2, Math.min(w, h) / 4, 0, Math.PI * 4);
-            cx.fillStyle = denyColor;
-            cx.fill();
-            const fontSize = Math.min(w, h) * 0.3;
-            cx.font = `${fontSize}px Courier New`;
-            cx.fillText("🦄", x + w / 4, y + h / 2);
-        }
-
-        cx.restore();
+        drawHighlightedArea(
+            highlightedArea,
+            TILE_WIDTH,
+            TILE_HEIGHT,
+            areaHighlightMode,
+            selectedActionIndex,
+            tools,
+            highlightColor,
+            denyColor,
+        );
     }
 
     cx.restore();

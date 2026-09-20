@@ -200,7 +200,9 @@ export const createLevel = (params: LevelParameters): Level => ({
         y: 50,
         zoom: 8,
     },
-    tiles: Array.from({ length: params.xCount * params.yCount }),
+    tiles: Array.from({ length: params.xCount * params.yCount }, () => ({
+        type: "water",
+    })),
     objects: [],
     objectsToAdd: [],
     startTile: { ix: 0, iy: 0 },
