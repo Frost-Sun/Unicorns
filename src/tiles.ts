@@ -212,12 +212,12 @@ const createTile = (
                 straw:
                     random() > 0.2
                         ? {
-                              wobblePhase: random(Math.PI),
-                              width: TILE_WIDTH / 16,
-                              height: random(TILE_HEIGHT / 4) + TILE_HEIGHT / 8,
-                              xAdjust: random(TILE_WIDTH),
-                              yAdjust: random(TILE_HEIGHT),
-                          }
+                            wobblePhase: random(Math.PI),
+                            width: TILE_WIDTH / 16,
+                            height: random(TILE_HEIGHT / 4) + TILE_HEIGHT / 8,
+                            xAdjust: random(TILE_WIDTH),
+                            yAdjust: random(TILE_HEIGHT),
+                        }
                         : undefined,
             };
         default:
@@ -504,6 +504,8 @@ const drawSplash = (
     ctx.fill();
 };
 
+// Add these helper functions before drawMap (around line 470)
+
 const drawFinish = (
     ctx: CanvasRenderingContext2D,
     o: GameObject,
@@ -619,52 +621,6 @@ export const drawMap = (
     const isWaterTile = (t: string | undefined): boolean =>
         t === "water" || t === "rainbow";
 
-    // Get corner radius based on neighbors
-    const getCornerRadius = (
-        up?: Tile,
-        down?: Tile,
-        left?: Tile,
-        right?: Tile,
-        upLeft?: Tile,
-        upRight?: Tile,
-        downLeft?: Tile,
-        downRight?: Tile,
-        isWater: boolean = false,
-    ): [number, number, number, number] => {
-        const r = CORNER_RADIUS;
-        if (isWater) {
-            return [
-                up?.type === "water" &&
-                left?.type === "water" &&
-                upLeft?.type === "water"
-                    ? r
-                    : 0,
-                up?.type === "water" &&
-                right?.type === "water" &&
-                upRight?.type === "water"
-                    ? r
-                    : 0,
-                down?.type === "water" &&
-                right?.type === "water" &&
-                downRight?.type === "water"
-                    ? r
-                    : 0,
-                down?.type === "water" &&
-                left?.type === "water" &&
-                downLeft?.type === "water"
-                    ? r
-                    : 0,
-            ];
-        } else {
-            return [
-                up?.type !== "water" && left?.type !== "water" ? r : 0,
-                up?.type !== "water" && right?.type !== "water" ? r : 0,
-                down?.type !== "water" && right?.type !== "water" ? r : 0,
-                down?.type !== "water" && left?.type !== "water" ? r : 0,
-            ];
-        }
-    };
-
     const getNeighbors = (
         ix: number,
         iy: number,
@@ -700,134 +656,172 @@ export const drawMap = (
             if (!tile) continue;
             if (tile.object) objectsToDraw.push(tile.object);
 
-            // Cache neighbors for reuse
-            const neighbors = getNeighbors(ix, iy);
+            // Only process land/rock/start tiles
+            if (tile.type === "land" || tile.type === "rock" || tile?.type === "start") {
+                const neighbors = getNeighbors(ix, iy);
 
-            if (
-                tile.type === "land" ||
-                tile.type === "rock" ||
-                tile?.type === "start"
-            ) {
-                const [tl, tr, br, bl] = getCornerRadius(
-                    neighbors.up,
-                    neighbors.down,
-                    neighbors.left,
-                    neighbors.right,
-                    neighbors.upLeft,
-                    neighbors.upRight,
-                    neighbors.downLeft,
-                    neighbors.downRight,
-                    false, // not water tile
-                );
+                // Check which sides border water (for tide effect)
+                const upWater = isWaterTile(neighbors.up?.type);
+                const downWater = isWaterTile(neighbors.down?.type);
+                const leftWater = isWaterTile(neighbors.left?.type);
+                const rightWater = isWaterTile(neighbors.right?.type);
 
-                // Draw Water background for outer capes
-                if (tl > 0 || tr > 0 || br > 0 || bl > 0) {
-                    cx.fillStyle = waterColor;
-                    cx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
-                }
+                // Determine corner radius for each corner based on water neighbors
+                // A corner gets radius 0 (sharp) if the adjacent side borders LAND or EDGE (same type or out of bounds)
+                // Otherwise, it gets CORNER_RADIUS (rounded) if it touches WATER (different type)
+                const tl = upWater && leftWater ? CORNER_RADIUS : 0;
+                const tr = upWater && rightWater ? CORNER_RADIUS : 0;
+                const bl = downWater && leftWater ? CORNER_RADIUS : 0;
+                const br = downWater && rightWater ? CORNER_RADIUS : 0;
 
-                cx.save();
-
-                // 1. Base Green (defines the absolute outer boundary)
-                cx.fillStyle = landColor;
-                cx.beginPath();
-                cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [tl, tr, br, bl]);
-                cx.fill();
-
-                cx.clip();
-
-                // 2. Tide layer (covers the whole clipped tile)
-                cx.fillStyle = `rgb(40, 130, ${150 + (ix * iy) / 2})`;
-                cx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
-
-                // 3. Inner Green (shrinks away from water to reveal the Tide)
-                let ix_in = x,
-                    iy_in = y,
-                    iw_in = TILE_WIDTH,
-                    ih_in = TILE_HEIGHT;
-                if (isWaterTile(neighbors.up?.type)) {
-                    iy_in += tide;
-                    ih_in -= tide;
-                }
-                if (isWaterTile(neighbors.down?.type)) {
-                    ih_in -= tide;
-                }
-                if (isWaterTile(neighbors.left?.type)) {
-                    ix_in += tide;
-                    iw_in -= tide;
-                }
-                if (isWaterTile(neighbors.right?.type)) {
-                    iw_in -= tide;
-                }
-
-                const itl = tl > 0 ? Math.max(0, tl - tide) : 0;
-                const itr = tr > 0 ? Math.max(0, tr - tide) : 0;
-                const ibr = br > 0 ? Math.max(0, br - tide) : 0;
-                const ibl = bl > 0 ? Math.max(0, bl - tide) : 0;
-
-                cx.fillStyle = landColor;
-                cx.beginPath();
-                if (iw_in > 0 && ih_in > 0) {
-                    cx.roundRect(ix_in, iy_in, iw_in, ih_in, [
-                        itl,
-                        itr,
-                        ibr,
-                        ibl,
-                    ]);
-                    cx.fill();
-                }
-
-                cx.restore();
-
-                if (tile?.type === "start") {
+                // If any corner is 0, this tile borders land and needs tide effect (or is plain land)
+                if (tl === 0 || tr === 0 || bl === 0 || br === 0) {
                     cx.save();
 
+                    // 1. Base Green (defines the absolute outer boundary with adjusted corners)
+                    cx.fillStyle = landColor;
                     cx.beginPath();
-                    cx.roundRect(
-                        x + 1,
-                        y + 1,
-                        TILE_WIDTH - 2,
-                        TILE_HEIGHT - 2,
-                        6,
-                    );
-
-                    cx.fillStyle = "#5c94e0";
+                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [tl, tr, br, bl]);
                     cx.fill();
 
                     cx.clip();
 
-                    const cloudX = x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
+                    // 2. Tide layer (covers the whole clipped tile)
+                    cx.fillStyle = `rgb(40, 130, ${150 + (ix * iy) / 2})`;
+                    cx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
 
-                    cx.textAlign = "center";
-                    cx.textBaseline = "middle";
-                    cx.font = `${TILE_WIDTH * 0.75}px sans-serif`;
-                    cx.fillText("☁️", cloudX, y + TILE_HEIGHT / 2);
+                    // 3. Inner Green (shrinks away from water to reveal the Tide)
+                    let ix_in = x,
+                        iy_in = y,
+                        iw_in = TILE_WIDTH,
+                        ih_in = TILE_HEIGHT;
+                    if (upWater) {
+                        iy_in += tide;
+                        ih_in -= tide;
+                    }
+                    if (downWater) {
+                        ih_in -= tide;
+                    }
+                    if (leftWater) {
+                        ix_in += tide;
+                        iw_in -= tide;
+                    }
+                    if (rightWater) {
+                        iw_in -= tide;
+                    }
+
+                    const itl = tl > 0 ? Math.max(0, tl - tide) : 0;
+                    const itr = tr > 0 ? Math.max(0, tr - tide) : 0;
+                    const ibr = br > 0 ? Math.max(0, br - tide) : 0;
+                    const ibl = bl > 0 ? Math.max(0, bl - tide) : 0;
+
+                    cx.fillStyle = landColor;
+                    cx.beginPath();
+                    if (iw_in > 0 && ih_in > 0) {
+                        cx.roundRect(ix_in, iy_in, iw_in, ih_in, [itl, itr, ibr, ibl]);
+                        cx.fill();
+                    }
 
                     cx.restore();
-                }
 
-                // 4. Decorations
-                if (strawColor && tile.straw) {
-                    cx.fillStyle = strawColor;
-                    renderStraw(x, y, tile.straw, time.t);
-                }
+                    // Continue with decorations
+                    if (tile?.type === "start") {
+                        cx.save();
 
-                if (tile.arrow != null) {
+                        cx.beginPath();
+                        cx.roundRect(
+                            x + 1,
+                            y + 1,
+                            TILE_WIDTH - 2,
+                            TILE_HEIGHT - 2,
+                            6,
+                        );
+
+                        cx.fillStyle = "#5c94e0";
+                        cx.fill();
+
+                        cx.clip();
+
+                        const cloudX = x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
+
+                        cx.textAlign = "center";
+                        cx.textBaseline = "middle";
+                        cx.font = `${TILE_WIDTH * 0.75}px sans-serif`;
+                        cx.fillText("☁️", cloudX, y + TILE_HEIGHT / 2);
+
+                        cx.restore();
+                    }
+
+                    // 4. Decorations
+                    if (strawColor && tile.straw) {
+                        cx.fillStyle = strawColor;
+                        renderStraw(x, y, tile.straw, time.t);
+                    }
+
+                    if (tile.arrow != null) {
+                        cx.save();
+                        cx.translate(x + TILE_WIDTH / 2, y + TILE_HEIGHT / 2);
+                        if (tile.arrow === Arrow.Right) cx.rotate(Math.PI / 2);
+                        else if (tile.arrow === Arrow.Down) cx.rotate(Math.PI);
+                        else if (tile.arrow === Arrow.Left) cx.rotate(-Math.PI / 2);
+
+                        cx.fillStyle = arrowColor;
+                        cx.beginPath();
+                        const qw = TILE_WIDTH / 4;
+                        const qh = TILE_HEIGHT / 4;
+                        cx.moveTo(-qw, qh);
+                        cx.lineTo(0, -qh);
+                        cx.lineTo(qw, qh);
+                        cx.fill();
+                        cx.restore();
+                    }
+                } else {
+                    // No water neighbors - draw plain land tile with full corners (all rounded)
                     cx.save();
-                    cx.translate(x + TILE_WIDTH / 2, y + TILE_HEIGHT / 2);
-                    if (tile.arrow === Arrow.Right) cx.rotate(Math.PI / 2);
-                    else if (tile.arrow === Arrow.Down) cx.rotate(Math.PI);
-                    else if (tile.arrow === Arrow.Left) cx.rotate(-Math.PI / 2);
-
-                    cx.fillStyle = arrowColor;
+                    cx.fillStyle = landColor;
                     cx.beginPath();
-                    const qw = TILE_WIDTH / 4;
-                    const qh = TILE_HEIGHT / 4;
-                    cx.moveTo(-qw, qh);
-                    cx.lineTo(0, -qh);
-                    cx.lineTo(qw, qh);
+                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [CORNER_RADIUS, CORNER_RADIUS, CORNER_RADIUS, CORNER_RADIUS]);
                     cx.fill();
                     cx.restore();
+
+                    // Continue with decorations
+                    if (tile?.type === "start") {
+                        cx.save();
+                        cx.beginPath();
+                        cx.roundRect(x + 1, y + 1, TILE_WIDTH - 2, TILE_HEIGHT - 2, 6);
+                        cx.fillStyle = "#5c94e0";
+                        cx.fill();
+                        cx.clip();
+                        const cloudX = x - 8 + ((time.t / 160) % (TILE_WIDTH + 16));
+                        cx.textAlign = "center";
+                        cx.textBaseline = "middle";
+                        cx.font = `${TILE_WIDTH * 0.75}px sans-serif`;
+                        cx.fillText("☁️", cloudX, y + TILE_HEIGHT / 2);
+                        cx.restore();
+                    }
+
+                    if (strawColor && tile.straw) {
+                        cx.fillStyle = strawColor;
+                        renderStraw(x, y, tile.straw, time.t);
+                    }
+
+                    if (tile.arrow != null) {
+                        cx.save();
+                        cx.translate(x + TILE_WIDTH / 2, y + TILE_HEIGHT / 2);
+                        if (tile.arrow === Arrow.Right) cx.rotate(Math.PI / 2);
+                        else if (tile.arrow === Arrow.Down) cx.rotate(Math.PI);
+                        else if (tile.arrow === Arrow.Left) cx.rotate(-Math.PI / 2);
+
+                        cx.fillStyle = arrowColor;
+                        cx.beginPath();
+                        const qw = TILE_WIDTH / 4;
+                        const qh = TILE_HEIGHT / 4;
+                        cx.moveTo(-qw, qh);
+                        cx.lineTo(0, -qh);
+                        cx.lineTo(qw, qh);
+                        cx.fill();
+                        cx.restore();
+                    }
                 }
             }
         }
@@ -841,60 +835,66 @@ export const drawMap = (
             const tile = tileMapGet(map, ix, iy);
 
             if (tile?.type === "water" || tile?.type === "rainbow") {
-                // Reuse cached neighbors from previous pass if available
-                // Note: We need to call getNeighbors again since we can't cache across passes
-                // But we're only calling it once per water tile now (not twice)
                 const neighbors = getNeighbors(ix, iy);
 
-                const [tl, tr, br, bl] = getCornerRadius(
-                    neighbors.up,
-                    neighbors.down,
-                    neighbors.left,
-                    neighbors.right,
-                    neighbors.upLeft,
-                    neighbors.upRight,
-                    neighbors.downLeft,
-                    neighbors.downRight,
-                    true, // water tile
-                );
+                // Check which sides border land (for bay curve effect)
+                const upLand = neighbors.up && !isWaterTile(neighbors.up.type);
+                const downLand = neighbors.down && !isWaterTile(neighbors.down.type);
+                const leftLand = neighbors.left && !isWaterTile(neighbors.left.type);
+                const rightLand = neighbors.right && !isWaterTile(neighbors.right.type);
+
+                // Determine corner radius for each corner based on land neighbors
+                // A corner gets radius 0 (sharp) if the adjacent side borders WATER or EDGE (same type or out of bounds)
+                // Otherwise, it gets CORNER_RADIUS (rounded) if it touches LAND (different type)
+                const tl = upLand && leftLand ? CORNER_RADIUS : 0;
+                const tr = upLand && rightLand ? CORNER_RADIUS : 0;
+                const bl = downLand && leftLand ? CORNER_RADIUS : 0;
+                const br = downLand && rightLand ? CORNER_RADIUS : 0;
 
                 // If this water tile has a land bay corner
-                if (tl > 0 || tr > 0 || br > 0 || bl > 0) {
+                if (tl > 0 || tr > 0 || bl > 0 || br > 0) {
+                    // Synchronized tide size to perfectly match Pass 1
+                    const tide = Math.sin(time.t * 0.002) * 1.0;
+
                     // 1. Spillover Green Base (expanded safely, no alpha overlap issues)
                     cx.fillStyle = landColor;
-                    if (tl > 0)
+                    if (tl > 0) {
                         cx.fillRect(
                             x - tide - 1,
                             y - tide - 1,
                             tl + tide + 1,
                             tl + tide + 1,
                         );
-                    if (tr > 0)
+                    }
+                    if (tr > 0) {
                         cx.fillRect(
                             x + TILE_WIDTH - tr,
                             y - tide - 1,
                             tr + tide + 1,
                             tr + tide + 1,
                         );
-                    if (br > 0)
+                    }
+                    if (br > 0) {
                         cx.fillRect(
                             x + TILE_WIDTH - br,
                             y + TILE_HEIGHT - br,
                             br + tide + 1,
                             br + tide + 1,
                         );
-                    if (bl > 0)
+                    }
+                    if (bl > 0) {
                         cx.fillRect(
                             x - tide - 1,
                             y + TILE_HEIGHT - bl,
                             bl + tide + 1,
                             bl + tide + 1,
                         );
+                    }
 
                     // 2. Concentric Tide Arcs
+                    // Exact mathematical angles (no extensions) to prevent dark overlapping wedges
                     cx.fillStyle = `rgb(40, 130, ${150 + (ix * iy) / 2})`;
                     cx.beginPath();
-
                     if (tl > 0) {
                         cx.moveTo(x + tl, y + tl);
                         cx.arc(
@@ -936,46 +936,69 @@ export const drawMap = (
                         );
                     }
                     cx.fill();
-                }
 
+                    // 3. Main Water Layer
+                    cx.fillStyle = waterColor;
+                    cx.beginPath();
+                    cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [tl, tr, br, bl]);
+                    cx.fill();
+
+                    // If rainbow bridge, draw it here
+                    if (tile?.type === "rainbow") {
+                        if (tile.xCount != null) {
+                            drawRainbowBridge(
+                                cx,
+                                x,
+                                y,
+                                tile.xCount,
+                                TILE_HEIGHT,
+                                RAINBROW_OVERHANG,
+                                RAINBROW_COLORS,
+                            );
+                        } else if (tile.yCount != null) {
+                            drawRainbowBridge(
+                                cx,
+                                x,
+                                y,
+                                tile.yCount,
+                                TILE_WIDTH,
+                                RAINBROW_OVERHANG,
+                                RAINBROW_COLORS,
+                                true, // vertical
+                            );
+                        }
+                    }
+                }
                 // 3. Main Water Layer
                 cx.fillStyle = waterColor;
                 cx.beginPath();
                 cx.roundRect(x, y, TILE_WIDTH, TILE_HEIGHT, [tl, tr, br, bl]);
                 cx.fill();
-            }
-        }
-    }
 
-    // PASS 3: Draw Rainbow Bridges
-    for (let iy = 0; iy < map.yCount; iy++) {
-        const y = iy * TILE_HEIGHT;
-        for (let ix = 0; ix < map.xCount; ix++) {
-            const x = ix * TILE_WIDTH;
-            const tile = tileMapGet(map, ix, iy);
-
-            if (tile?.type === "rainbow") {
-                if (tile.xCount != null) {
-                    drawRainbowBridge(
-                        cx,
-                        x,
-                        y,
-                        tile.xCount,
-                        TILE_HEIGHT,
-                        RAINBROW_OVERHANG,
-                        RAINBROW_COLORS,
-                    );
-                } else if (tile.yCount != null) {
-                    drawRainbowBridge(
-                        cx,
-                        x,
-                        y,
-                        tile.yCount,
-                        TILE_WIDTH,
-                        RAINBROW_OVERHANG,
-                        RAINBROW_COLORS,
-                        true, // vertical
-                    );
+                // If rainbow bridge, draw it here
+                if (tile?.type === "rainbow") {
+                    if (tile.xCount != null) {
+                        drawRainbowBridge(
+                            cx,
+                            x,
+                            y,
+                            tile.xCount,
+                            TILE_HEIGHT,
+                            RAINBROW_OVERHANG,
+                            RAINBROW_COLORS,
+                        );
+                    } else if (tile.yCount != null) {
+                        drawRainbowBridge(
+                            cx,
+                            x,
+                            y,
+                            tile.yCount,
+                            TILE_WIDTH,
+                            RAINBROW_OVERHANG,
+                            RAINBROW_COLORS,
+                            true, // vertical
+                        );
+                    }
                 }
             }
         }
@@ -984,7 +1007,7 @@ export const drawMap = (
     objectsToDraw.push(...objects);
     objectsToDraw.sort((a, b) => a.y + a.height - (b.y + b.height));
 
-    // PASS 4: Rest of the objects
+    // PASS 3: Rest of the objects
     for (let i = 0; i < objectsToDraw.length; i++) {
         const o = objectsToDraw[i];
 
@@ -1040,7 +1063,7 @@ export const drawMap = (
         }
     }
 
-    // PASS 5: Draw highlighted area
+    // PASS 4: Draw highlighted area
     if (highlightedArea) {
         drawHighlightedArea(
             cx,
