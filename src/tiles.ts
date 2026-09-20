@@ -443,7 +443,8 @@ export const drawMap = (
     const denyColor = DenyColorByTheme[theme];
 
     // Helper: Check if tile type is water/rainbow (inline for performance)
-    const isWaterTile = (t: string | undefined): boolean => t === "water" || t === "rainbow";
+    const isWaterTile = (t: string | undefined): boolean =>
+        t === "water" || t === "rainbow";
 
     // Helper: Get corner radius based on neighbors (merged function)
     const getCornerRadius = (
@@ -460,10 +461,26 @@ export const drawMap = (
         const r = CORNER_RADIUS;
         if (isWater) {
             return [
-                up?.type === "water" && left?.type === "water" && upLeft?.type === "water" ? r : 0,
-                up?.type === "water" && right?.type === "water" && upRight?.type === "water" ? r : 0,
-                down?.type === "water" && right?.type === "water" && downRight?.type === "water" ? r : 0,
-                down?.type === "water" && left?.type === "water" && downLeft?.type === "water" ? r : 0,
+                up?.type === "water" &&
+                    left?.type === "water" &&
+                    upLeft?.type === "water"
+                    ? r
+                    : 0,
+                up?.type === "water" &&
+                    right?.type === "water" &&
+                    upRight?.type === "water"
+                    ? r
+                    : 0,
+                down?.type === "water" &&
+                    right?.type === "water" &&
+                    downRight?.type === "water"
+                    ? r
+                    : 0,
+                down?.type === "water" &&
+                    left?.type === "water" &&
+                    downLeft?.type === "water"
+                    ? r
+                    : 0,
             ];
         } else {
             return [
@@ -475,7 +492,10 @@ export const drawMap = (
         }
     };
 
-    const getNeighbors = (ix: number, iy: number): {
+    const getNeighbors = (
+        ix: number,
+        iy: number,
+    ): {
         up?: Tile;
         down?: Tile;
         left?: Tile;
@@ -510,12 +530,20 @@ export const drawMap = (
             // Cache neighbors for reuse
             const neighbors = getNeighbors(ix, iy);
 
-            if (tile.type === "land" || tile.type === "rock" || tile?.type === "start") {
+            if (
+                tile.type === "land" ||
+                tile.type === "rock" ||
+                tile?.type === "start"
+            ) {
                 const [tl, tr, br, bl] = getCornerRadius(
-                    neighbors.up, neighbors.down,
-                    neighbors.left, neighbors.right,
-                    neighbors.upLeft, neighbors.upRight,
-                    neighbors.downLeft, neighbors.downRight,
+                    neighbors.up,
+                    neighbors.down,
+                    neighbors.left,
+                    neighbors.right,
+                    neighbors.upLeft,
+                    neighbors.upRight,
+                    neighbors.downLeft,
+                    neighbors.downRight,
                     false, // not water tile
                 );
 
@@ -567,7 +595,12 @@ export const drawMap = (
                 cx.fillStyle = landColor;
                 cx.beginPath();
                 if (iw_in > 0 && ih_in > 0) {
-                    cx.roundRect(ix_in, iy_in, iw_in, ih_in, [itl, itr, ibr, ibl]);
+                    cx.roundRect(ix_in, iy_in, iw_in, ih_in, [
+                        itl,
+                        itr,
+                        ibr,
+                        ibl,
+                    ]);
                     cx.fill();
                 }
 
@@ -577,7 +610,13 @@ export const drawMap = (
                     cx.save();
 
                     cx.beginPath();
-                    cx.roundRect(x + 1, y + 1, TILE_WIDTH - 2, TILE_HEIGHT - 2, 6);
+                    cx.roundRect(
+                        x + 1,
+                        y + 1,
+                        TILE_WIDTH - 2,
+                        TILE_HEIGHT - 2,
+                        6,
+                    );
 
                     cx.fillStyle = "#5c94e0";
                     cx.fill();
@@ -635,10 +674,14 @@ export const drawMap = (
                 const neighbors = getNeighbors(ix, iy);
 
                 const [tl, tr, br, bl] = getCornerRadius(
-                    neighbors.up, neighbors.down,
-                    neighbors.left, neighbors.right,
-                    neighbors.upLeft, neighbors.upRight,
-                    neighbors.downLeft, neighbors.downRight,
+                    neighbors.up,
+                    neighbors.down,
+                    neighbors.left,
+                    neighbors.right,
+                    neighbors.upLeft,
+                    neighbors.upRight,
+                    neighbors.downLeft,
+                    neighbors.downRight,
                     true, // water tile
                 );
 
@@ -647,13 +690,33 @@ export const drawMap = (
                     // 1. Spillover Green Base (expanded safely, no alpha overlap issues)
                     cx.fillStyle = landColor;
                     if (tl > 0)
-                        cx.fillRect(x - tide - 1, y - tide - 1, tl + tide + 1, tl + tide + 1);
+                        cx.fillRect(
+                            x - tide - 1,
+                            y - tide - 1,
+                            tl + tide + 1,
+                            tl + tide + 1,
+                        );
                     if (tr > 0)
-                        cx.fillRect(x + TILE_WIDTH - tr, y - tide - 1, tr + tide + 1, tr + tide + 1);
+                        cx.fillRect(
+                            x + TILE_WIDTH - tr,
+                            y - tide - 1,
+                            tr + tide + 1,
+                            tr + tide + 1,
+                        );
                     if (br > 0)
-                        cx.fillRect(x + TILE_WIDTH - br, y + TILE_HEIGHT - br, br + tide + 1, br + tide + 1);
+                        cx.fillRect(
+                            x + TILE_WIDTH - br,
+                            y + TILE_HEIGHT - br,
+                            br + tide + 1,
+                            br + tide + 1,
+                        );
                     if (bl > 0)
-                        cx.fillRect(x - tide - 1, y + TILE_HEIGHT - bl, bl + tide + 1, bl + tide + 1);
+                        cx.fillRect(
+                            x - tide - 1,
+                            y + TILE_HEIGHT - bl,
+                            bl + tide + 1,
+                            bl + tide + 1,
+                        );
 
                     // 2. Concentric Tide Arcs
                     cx.fillStyle = `rgb(40, 130, ${150 + (ix * iy) / 2})`;
@@ -661,19 +724,43 @@ export const drawMap = (
 
                     if (tl > 0) {
                         cx.moveTo(x + tl, y + tl);
-                        cx.arc(x + tl, y + tl, tl + tide, Math.PI, Math.PI * 1.5);
+                        cx.arc(
+                            x + tl,
+                            y + tl,
+                            tl + tide,
+                            Math.PI,
+                            Math.PI * 1.5,
+                        );
                     }
                     if (tr > 0) {
                         cx.moveTo(x + TILE_WIDTH - tr, y + tr);
-                        cx.arc(x + TILE_WIDTH - tr, y + tr, tr + tide, Math.PI * 1.5, Math.PI * 2);
+                        cx.arc(
+                            x + TILE_WIDTH - tr,
+                            y + tr,
+                            tr + tide,
+                            Math.PI * 1.5,
+                            Math.PI * 2,
+                        );
                     }
                     if (br > 0) {
                         cx.moveTo(x + TILE_WIDTH - br, y + TILE_HEIGHT - br);
-                        cx.arc(x + TILE_WIDTH - br, y + TILE_HEIGHT - br, br + tide, 0, Math.PI * 0.5);
+                        cx.arc(
+                            x + TILE_WIDTH - br,
+                            y + TILE_HEIGHT - br,
+                            br + tide,
+                            0,
+                            Math.PI * 0.5,
+                        );
                     }
                     if (bl > 0) {
                         cx.moveTo(x + bl, y + TILE_HEIGHT - bl);
-                        cx.arc(x + bl, y + TILE_HEIGHT - bl, bl + tide, Math.PI * 0.5, Math.PI);
+                        cx.arc(
+                            x + bl,
+                            y + TILE_HEIGHT - bl,
+                            bl + tide,
+                            Math.PI * 0.5,
+                            Math.PI,
+                        );
                     }
                     cx.fill();
                 }
@@ -698,7 +785,8 @@ export const drawMap = (
                 if (tile.xCount != null) {
                     drawRainbowBridge(
                         cx,
-                        x, y,
+                        x,
+                        y,
                         tile.xCount,
                         TILE_HEIGHT,
                         RAINBROW_OVERHANG,
@@ -707,7 +795,8 @@ export const drawMap = (
                 } else if (tile.yCount != null) {
                     drawRainbowBridge(
                         cx,
-                        x, y,
+                        x,
+                        y,
                         tile.yCount,
                         TILE_WIDTH,
                         RAINBROW_OVERHANG,
@@ -761,7 +850,12 @@ export const drawMap = (
             }
             case "rock": {
                 cx.fillStyle = "rgb(80, 70, 70)";
-                cx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height + TILE_UPWARD_HEIGHT);
+                cx.fillRect(
+                    o.x,
+                    o.y - TILE_UPWARD_HEIGHT,
+                    o.width,
+                    o.height + TILE_UPWARD_HEIGHT,
+                );
                 cx.fillStyle = "rgb(100, 90, 90)";
                 cx.fillRect(o.x, o.y - TILE_UPWARD_HEIGHT, o.width, o.height);
                 break;
@@ -810,7 +904,8 @@ const drawRainbowBridge = (
     const height = vertical ? count * tileDim + overhang * 2 : tileDim;
 
     const gradient = ctx.createLinearGradient(
-        startX, startY,
+        startX,
+        startY,
         vertical ? startX : startX + width,
         vertical ? startY + height : startY,
     );
@@ -854,8 +949,20 @@ const drawSplash = (
     const sideHeight = Math.sin(phase * Math.PI) * (TILE_HEIGHT * 0.2);
 
     ctx.beginPath();
-    ctx.arc(o.x - sideSpread, o.y - sideHeight, splashRadius * 0.5, 0, 2 * Math.PI);
-    ctx.arc(o.x + sideSpread, o.y - sideHeight, splashRadius * 0.5, 0, 2 * Math.PI);
+    ctx.arc(
+        o.x - sideSpread,
+        o.y - sideHeight,
+        splashRadius * 0.5,
+        0,
+        2 * Math.PI,
+    );
+    ctx.arc(
+        o.x + sideSpread,
+        o.y - sideHeight,
+        splashRadius * 0.5,
+        0,
+        2 * Math.PI,
+    );
     ctx.fill();
 };
 
