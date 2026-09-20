@@ -72,7 +72,6 @@ const createMapRainbowTutorial = (number: number): Level => {
         },
         theme: "summer",
     });
-    fill(level, level, "water");
 
     const inner = carveY(carve(level), 2);
     fill(level, inner, "land");
@@ -99,7 +98,6 @@ const createMapRockTutorial = (number: number): Level => {
         },
         theme: "summer",
     });
-    fill(level, level, "water");
 
     const inner = carveY(carve(level), 2);
     fill(level, inner, "land");
@@ -156,7 +154,6 @@ const createMapBounceTutorial = (number: number): Level => {
         },
         theme: "summer",
     });
-    fill(level, level, "water");
 
     const island = carveY(carve(level), 3);
     const cape = extendDown(sliceLeft(island, 3), 2);
@@ -186,7 +183,6 @@ const createMapCombineTutorial = (number: number): Level => {
         },
         theme: "summer",
     });
-    fill(level, level, "water");
 
     const inner = carve(level);
     const [left, right] = splitX(inner, inner.xCount * 0.6);
@@ -222,7 +218,6 @@ const createMapKeepDigging = (number: number): Level => {
         },
         theme: "spring",
     });
-    fill(level, level, "water");
 
     const island = carveY(carveX(level, 2));
     fill(level, island, "land");
@@ -267,7 +262,6 @@ const createMapSpiral = (number: number): Level => {
         },
         theme: "spring",
     });
-    fill(level, level, "water");
 
     const inner = carveRight(carve(level), 2);
 
@@ -345,7 +339,6 @@ const createMapSpiral2 = (number: number): Level => {
         },
         theme: "autumn",
     });
-    fill(level, level, "water");
 
     const inner = carve(level);
 
@@ -384,7 +377,6 @@ const createMapBaboonIsland = (number: number): Level => {
         },
         theme: "autumn",
     });
-    fill(level, level, "water");
 
     const coreIsland = core(level, level.yCount * 0.7);
     const wider = carveY(extendX(coreIsland));
@@ -446,7 +438,6 @@ const createMapReturnToBaboonIsland = (number: number): Level => {
         },
         theme: "autumn",
     });
-    fill(level, level, "water");
 
     const coreIsland = core(level, level.yCount * 0.7);
     const wider = carveY(extendX(coreIsland));
@@ -534,7 +525,6 @@ const createMapRocks = (
         theme: "spring",
         ...params,
     });
-    fill(level, level, "water");
 
     const island = carveY(carveX(level, 2));
     fill(level, island, "land");
@@ -588,7 +578,6 @@ const createMapRainbowIslands = (number: number): Level => {
         },
         theme: "autumn",
     });
-    fill(level, level, "water");
 
     const inner = carveY(carveX(level, 6));
     const [a, b, c, d, _e, _f, _g, h, _i] = segment9(inner);
@@ -640,7 +629,6 @@ const createMapMoreIslands = (number: number): Level => {
         },
         theme: "autumn",
     });
-    fill(level, level, "water");
 
     const inner = carveTop(carve(level));
     const [_a, b, c, d, e, f, g, h, i] = segment9(inner);
@@ -707,7 +695,6 @@ const createMapCaves = (number: number): Level => {
         },
         theme: "winter",
     });
-    fill(level, level, "water");
 
     const inner = carveY(carveX(level, 10));
     fill(level, inner, "land");
