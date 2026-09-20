@@ -336,9 +336,10 @@ const digHorizontally = (
 
     const tilePos = getTilePosAt(objectCenter);
     const nextTile = tileMapGet(map, tilePos.ix + xDirection, tilePos.iy);
-    const rock = currentTile.type === "rock" ? currentTile : nextTile;
+    const diggedTile =
+        currentTile.object?.type === "rock" ? currentTile : nextTile;
 
-    if (rock?.type === "rock" && rock?.object) {
+    if (diggedTile?.type === "rock" && diggedTile?.object) {
         // Set slower speed for digging
         if (Math.abs(o.velocity.x) > DIGGING_SPEED * speedRatio) {
             o.velocity = { x: xDirection * DIGGING_SPEED * speedRatio, y: 0 };
@@ -348,18 +349,17 @@ const digHorizontally = (
 
         // Adjust rock size
         if (xDirection > 0) {
-            rock.object.x += dx;
+            diggedTile.object.x += dx;
         }
-        rock.object.width -= Math.abs(dx);
+        diggedTile.object.width -= Math.abs(dx);
 
         // Check if the current block is finished
         const BlockFinishedThreshold = TILE_WIDTH / 4;
-        if (rock.object.width <= BlockFinishedThreshold) {
-            rock.object = undefined;
-            rock.type = "land";
+        if (diggedTile.object.width <= BlockFinishedThreshold) {
+            diggedTile.object = undefined;
 
             // Check if there are no more rocks to dig
-            if (currentTile.type !== "rock" && nextTile?.type !== "rock") {
+            if (nextTile?.type !== "rock") {
                 o.action = GameObjectAction.Walk;
                 o.velocity = {
                     x: xDirection * CHARACTER_SPEED * speedRatio,
@@ -384,9 +384,10 @@ const digVertically = (
 
     const tilePos = getTilePosAt(objectCenter);
     const nextTile = tileMapGet(map, tilePos.ix, tilePos.iy + yDirection);
-    const rock = currentTile.type === "rock" ? currentTile : nextTile;
+    const diggedTile =
+        currentTile.object?.type === "rock" ? currentTile : nextTile;
 
-    if (rock?.type === "rock" && rock?.object) {
+    if (diggedTile?.type === "rock" && diggedTile?.object) {
         // Set slower speed for digging
         if (Math.abs(o.velocity.y) > DIGGING_SPEED * speedRatio) {
             o.velocity = { x: 0, y: yDirection * DIGGING_SPEED * speedRatio };
@@ -396,18 +397,17 @@ const digVertically = (
 
         // Adjust rock size
         if (yDirection > 0) {
-            rock.object.y += dy;
+            diggedTile.object.y += dy;
         }
-        rock.object.height -= Math.abs(dy);
+        diggedTile.object.height -= Math.abs(dy);
 
         // Check if the current block is finished
         const BlockFinishedThreshold = TILE_HEIGHT / 4;
-        if (rock.object.height <= BlockFinishedThreshold) {
-            rock.object = undefined;
-            rock.type = "land";
+        if (diggedTile.object.height <= BlockFinishedThreshold) {
+            diggedTile.object = undefined;
 
             // Check if there are no more rocks to dig
-            if (currentTile.type !== "rock" && nextTile?.type !== "rock") {
+            if (nextTile?.type !== "rock") {
                 o.action = GameObjectAction.Walk;
                 o.velocity = {
                     x: 0,
