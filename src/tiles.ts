@@ -617,33 +617,6 @@ export const drawMap = (
     const highlightColor = HighlightColorByTheme[theme];
     const denyColor = DenyColorByTheme[theme];
 
-    // Check if tile type is water/rainbow (inline for performance)
-    const isWaterTile = (t: string | undefined): boolean =>
-        t === "water" || t === "rainbow";
-
-    const getNeighbors = (
-        ix: number,
-        iy: number,
-    ): {
-        up?: Tile;
-        down?: Tile;
-        left?: Tile;
-        right?: Tile;
-        upLeft?: Tile;
-        upRight?: Tile;
-        downLeft?: Tile;
-        downRight?: Tile;
-    } => ({
-        up: tileMapGet(map, ix, iy - 1),
-        down: tileMapGet(map, ix, iy + 1),
-        left: tileMapGet(map, ix - 1, iy),
-        right: tileMapGet(map, ix + 1, iy),
-        upLeft: tileMapGet(map, ix - 1, iy - 1),
-        upRight: tileMapGet(map, ix + 1, iy - 1),
-        downLeft: tileMapGet(map, ix - 1, iy + 1),
-        downRight: tileMapGet(map, ix + 1, iy + 1),
-    });
-
     const tide = Math.sin(time.t * 0.002) * TIDE_AMPLITUDE;
 
     // PASS 1: Draw all Land Tiles
@@ -662,23 +635,25 @@ export const drawMap = (
                 tile.type === "rock" ||
                 tile?.type === "start"
             ) {
-                const neighbors = getNeighbors(ix, iy);
+                const up = tileMapGet(map, ix, iy - 1)?.type;
+                const down = tileMapGet(map, ix, iy + 1)?.type;
+                const left = tileMapGet(map, ix - 1, iy)?.type;
+                const right = tileMapGet(map, ix + 1, iy)?.type;
+                const upLeft = tileMapGet(map, ix - 1, iy - 1)?.type;
+                const upRight = tileMapGet(map, ix + 1, iy - 1)?.type;
+                const downLeft = tileMapGet(map, ix - 1, iy + 1)?.type;
+                const downRight = tileMapGet(map, ix + 1, iy + 1)?.type;
 
-                // Check which sides border water (for tide effect)
-                const upWater = isWaterTile(neighbors.up?.type);
-                const downWater = isWaterTile(neighbors.down?.type);
-                const leftWater = isWaterTile(neighbors.left?.type);
-                const rightWater = isWaterTile(neighbors.right?.type);
+                const r = 3;
+                const isW = (t: string | undefined) =>
+                    t === "water" || t === "rainbow";
 
-                // Determine corner radius for each corner based on water neighbors
-                // A corner gets radius 0 (sharp) if the adjacent side borders LAND or EDGE (same type or out of bounds)
-                // Otherwise, it gets CORNER_RADIUS (rounded) if it touches WATER (different type)
-                const tl = upWater && leftWater ? CORNER_RADIUS : 0;
-                const tr = upWater && rightWater ? CORNER_RADIUS : 0;
-                const bl = downWater && leftWater ? CORNER_RADIUS : 0;
-                const br = downWater && rightWater ? CORNER_RADIUS : 0;
+                const tl = isW(up) && isW(left) && isW(upLeft) ? r : 0;
+                const tr = isW(up) && isW(right) && isW(upRight) ? r : 0;
+                const br = isW(down) && isW(right) && isW(downRight) ? r : 0;
+                const bl = isW(down) && isW(left) && isW(downLeft) ? r : 0;
 
-                // If any corner is 0, this tile borders land and needs tide effect (or is plain land)
+                // Draw Water background for outer capes so the rounded corners reveal water
                 if (tl === 0 || tr === 0 || bl === 0 || br === 0) {
                     cx.save();
 
@@ -704,18 +679,18 @@ export const drawMap = (
                         iy_in = y,
                         iw_in = TILE_WIDTH,
                         ih_in = TILE_HEIGHT;
-                    if (upWater) {
+                    if (isW(up)) {
                         iy_in += tide;
                         ih_in -= tide;
                     }
-                    if (downWater) {
+                    if (isW(down)) {
                         ih_in -= tide;
                     }
-                    if (leftWater) {
+                    if (isW(left)) {
                         ix_in += tide;
                         iw_in -= tide;
                     }
-                    if (rightWater) {
+                    if (isW(right)) {
                         iw_in -= tide;
                     }
 
@@ -864,27 +839,22 @@ export const drawMap = (
             const tile = tileMapGet(map, ix, iy);
 
             if (tile?.type === "water" || tile?.type === "rainbow") {
-                const neighbors = getNeighbors(ix, iy);
+                const up = tileMapGet(map, ix, iy - 1)?.type;
+                const down = tileMapGet(map, ix, iy + 1)?.type;
+                const left = tileMapGet(map, ix - 1, iy)?.type;
+                const right = tileMapGet(map, ix + 1, iy)?.type;
 
-                // Check which sides border land (for bay curve effect)
-                const upLand = neighbors.up && !isWaterTile(neighbors.up.type);
-                const downLand =
-                    neighbors.down && !isWaterTile(neighbors.down.type);
-                const leftLand =
-                    neighbors.left && !isWaterTile(neighbors.left.type);
-                const rightLand =
-                    neighbors.right && !isWaterTile(neighbors.right.type);
+                const isLand = (t: string | undefined) =>
+                    t !== undefined && t !== "water" && t !== "rainbow";
+                const r = 3;
 
-                // Determine corner radius for each corner based on land neighbors
-                // A corner gets radius 0 (sharp) if the adjacent side borders WATER or EDGE (same type or out of bounds)
-                // Otherwise, it gets CORNER_RADIUS (rounded) if it touches LAND (different type)
-                const tl = upLand && leftLand ? CORNER_RADIUS : 0;
-                const tr = upLand && rightLand ? CORNER_RADIUS : 0;
-                const bl = downLand && leftLand ? CORNER_RADIUS : 0;
-                const br = downLand && rightLand ? CORNER_RADIUS : 0;
+                const tl = isLand(up) && isLand(left) ? r : 0;
+                const tr = isLand(up) && isLand(right) ? r : 0;
+                const br = isLand(down) && isLand(right) ? r : 0;
+                const bl = isLand(down) && isLand(left) ? r : 0;
 
-                // If this water tile has a land bay corner, draw the tide effect
-                if (tl > 0 || tr > 0 || bl > 0 || br > 0) {
+                // If this water tile has a land bay corner
+                if (tl > 0 || tr > 0 || br > 0 || bl > 0) {
                     // Synchronized tide size to perfectly match Pass 1
                     const tide = Math.sin(time.t * 0.002) * 1.0;
 
