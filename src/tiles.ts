@@ -212,12 +212,12 @@ const createTile = (
                 straw:
                     random() > 0.2
                         ? {
-                            wobblePhase: random(Math.PI),
-                            width: TILE_WIDTH / 16,
-                            height: random(TILE_HEIGHT / 4) + TILE_HEIGHT / 8,
-                            xAdjust: random(TILE_WIDTH),
-                            yAdjust: random(TILE_HEIGHT),
-                        }
+                              wobblePhase: random(Math.PI),
+                              width: TILE_WIDTH / 16,
+                              height: random(TILE_HEIGHT / 4) + TILE_HEIGHT / 8,
+                              xAdjust: random(TILE_WIDTH),
+                              yAdjust: random(TILE_HEIGHT),
+                          }
                         : undefined,
             };
         default:
@@ -635,23 +635,23 @@ export const drawMap = (
         if (isWater) {
             return [
                 up?.type === "water" &&
-                    left?.type === "water" &&
-                    upLeft?.type === "water"
+                left?.type === "water" &&
+                upLeft?.type === "water"
                     ? r
                     : 0,
                 up?.type === "water" &&
-                    right?.type === "water" &&
-                    upRight?.type === "water"
+                right?.type === "water" &&
+                upRight?.type === "water"
                     ? r
                     : 0,
                 down?.type === "water" &&
-                    right?.type === "water" &&
-                    downRight?.type === "water"
+                right?.type === "water" &&
+                downRight?.type === "water"
                     ? r
                     : 0,
                 down?.type === "water" &&
-                    left?.type === "water" &&
-                    downLeft?.type === "water"
+                left?.type === "water" &&
+                downLeft?.type === "water"
                     ? r
                     : 0,
             ];
