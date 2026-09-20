@@ -212,12 +212,12 @@ const createTile = (
                 straw:
                     random() > 0.2
                         ? {
-                              wobblePhase: random(Math.PI),
-                              width: TILE_WIDTH / 16,
-                              height: random(TILE_HEIGHT / 4) + TILE_HEIGHT / 8,
-                              xAdjust: random(TILE_WIDTH),
-                              yAdjust: random(TILE_HEIGHT),
-                          }
+                            wobblePhase: random(Math.PI),
+                            width: TILE_WIDTH / 16,
+                            height: random(TILE_HEIGHT / 4) + TILE_HEIGHT / 8,
+                            xAdjust: random(TILE_WIDTH),
+                            yAdjust: random(TILE_HEIGHT),
+                        }
                         : undefined,
             };
         default:
@@ -814,7 +814,7 @@ const drawRainbowBridge = (
         vertical ? startX : startX + width,
         vertical ? startY + height : startY,
     );
-    
+
     for (let i = 0; i < colors.length; i++) {
         gradient.addColorStop(i / colors.length, colors[i]);
     }
