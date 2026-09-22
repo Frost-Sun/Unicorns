@@ -313,8 +313,17 @@ export const updateLevel = (
                 direction,
                 RAINBOW_SPEED * speedRatio,
             ));
-
             const speed = length(currentVelocity);
+
+            if (tile !== o.currentTile) {
+                // The unicorn has finished digging a tile.
+                // Change type so that other tiles can be placed
+                // on it.
+                if (o.currentTile?.type === "rock") {
+                    o.currentTile.type = "land";
+                }
+                o.currentTile = tile;
+            }
 
             // Go faster on a rainbow
             if (tile?.type === "rainbow") {

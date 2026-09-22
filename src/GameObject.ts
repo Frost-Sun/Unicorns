@@ -24,7 +24,7 @@
 
 import type { Area } from "./core/math/Area";
 import type { Vector } from "./core/math/Vector";
-import { TILE_HEIGHT, TILE_WIDTH } from "./tiles";
+import { TILE_HEIGHT, TILE_WIDTH, type Tile } from "./tiles";
 
 export const RAINBOW_SPEED = 0.02;
 export const CHARACTER_SPEED = 0.005;
@@ -53,6 +53,7 @@ export interface GameObject extends Area {
     action?: GameObjectAction;
     createTime?: number;
     toDelete?: boolean;
+    currentTile?: Tile;
     nextDigSound?: number;
     animScale?: number;
 }
