@@ -7,6 +7,8 @@
     "dev": "vite",
     "start": "vite",
     "build": "tsc && vite build && google-closure-compiler --compilation_level ADVANCED --env BROWSER --warning_level QUIET --language_out ECMASCRIPT_2020 --externs externs.js --js dist/assets/index.js --js_output_file tmp/temp_gc.js && terser tmp/temp_gc.js -o dist/assets/index.js --compress passes=3 --mangle --toplevel && roadroller dist/assets/index.js -o dist/assets/index.js -Zab18 -Zlr2616 -Zmc3 -Zmd94 -Zpr15 -S0,1,2,3,5,7,11,13,22,42,225,409 && node createDeployPackage.js",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
     "preview": "vite preview",
     "lint": "oxlint"
   },
@@ -14,6 +16,7 @@
     "@eslint/js": "^10.0.1",
     "esbuild": "^0.28.2",
     "fast-xml-parser": "^5.11.0",
+    "gh-pages": "^6.3.0",
     "google-closure-compiler": "^20260831.0.0",
     "jszip": "^3.10.1",
     "oxlint": "^1.78.0",
