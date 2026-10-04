@@ -24,6 +24,7 @@
 
 import {
     applyCamera,
+    CameraMode,
     screenToLevel,
     type Camera,
 } from "./core/gameplay/Camera";
@@ -195,7 +196,7 @@ export const createLevel = (params: LevelParameters): Level => ({
     width: params.xCount * TILE_WIDTH,
     height: params.yCount * TILE_HEIGHT,
     camera: {
-        // mode: CameraMode.ShowWholeLevel,
+        mode: CameraMode.ShowWholeLevel,
         x: 50,
         y: 50,
         zoom: 8,
