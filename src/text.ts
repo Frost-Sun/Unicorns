@@ -45,10 +45,10 @@ export const renderText = (
     color: string | [string, string] = "white",
 ) => {
     cx.save();
-    cx.shadowColor = "rgba(0,0,0,0.8)";
-    cx.shadowBlur = 4;
-    cx.shadowOffsetX = 2;
-    cx.shadowOffsetY = 2;
+    cx.shadowColor = "rgb(0,0,0)";
+    cx.shadowBlur = 2;
+    cx.shadowOffsetX = 0;
+    cx.shadowOffsetY = 0;
     const fontSize = Math.floor(textSize * (canvas.width / 1000));
     const rem = Math.floor(TextSize.Tiny * (canvas.width / 1000));
     cx.globalAlpha = Math.max(alpha, 0);

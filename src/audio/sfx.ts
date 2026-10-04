@@ -9,7 +9,7 @@
  * of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be
+ * The above copyright notice and permission notice shall be
  * included in all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
@@ -104,12 +104,12 @@ export const playTune = async (tune: string, vol: number = 1) => {
     switch (tune) {
         case SFX_RUNNING: {
             if (mainTune.volume === 0) mainTune.currentTime = 0;
-            FadeOutIn(introTune, mainTune);
+            FadeOutIn(introTune, mainTune, 0.6);
             break;
         }
         case SFX_INTRO: {
             if (introTune.volume === 0) introTune.currentTime = 0;
-            FadeOutIn(mainTune, introTune);
+            FadeOutIn(mainTune, introTune, 0.5);
             break;
         }
         case SFX_HOME: {

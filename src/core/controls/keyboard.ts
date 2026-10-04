@@ -158,6 +158,8 @@ export const waitForKey = (key: Key): Promise<void> => {
 export const waitForInteraction = (soundToPlay?: string): Promise<void> => {
     return new Promise((resolve) => {
         const finish = () => {
+            playTune(SFX_CLICK);
+
             if (soundToPlay) {
                 playTune(soundToPlay);
             }
@@ -167,7 +169,6 @@ export const waitForInteraction = (soundToPlay?: string): Promise<void> => {
         };
 
         const keyListener = (event: KeyboardEvent): void => {
-            playTune(SFX_CLICK);
             if (event.code === "Space") {
                 finish();
             }

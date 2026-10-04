@@ -1,10 +1,10 @@
 /* eslint-disable no-sparse-arrays */
 
 // SFX
-export const clickSfx = [1.4, , 225, , , , 3, 1.7, -7, , , , , , , , .19, .1, , .38, 485];
-export const homeSfx = [1.4, ,539, , .04, .29, 1,1.92 , , , 567 , .02, .02 , , , , .04];
-export const splashSfx = [1.4,,1100,.01,,.71,4,2.5,,4.5,,,,,.3,,,.15,.05];
-export const digSfx = [1.4,,148,.01,,,4,2.2,-3,,,,,.5,22,.3,.47,.62,,.31];
+export const clickSfx = [1, , 225, , , , 3, 1.7, -7, , , , , , , , .19, .1, , .38, 485];
+export const homeSfx = [1, ,539, , .04, .29, 1,1.92 , , , 567 , .02, .02 , , , , .04];
+export const splashSfx = [1,,1100,.01,,.71,4,2.5,,4.5,,,,,.3,,,.15,.05];
+export const digSfx = [1,,148,.01,,,4,2.2,-3,,,,,.5,22,.3,.47,.62,,.31];
 
 const track0 = {
   i: [
