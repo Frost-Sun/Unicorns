@@ -76,8 +76,8 @@ const draw = (time: TimeStep): void => {
             cx.fillRect(0, 0, canvas.width, canvas.height);
 
             renderText(
-                "For the js13kGames 2026 game competition",
-                TextSize.Small,
+                "Director's cut. Originally made for the js13kGames 2026 game competition.",
+                TextSize.Tiny,
                 0.5,
                 -8,
             );
@@ -139,6 +139,16 @@ const draw = (time: TimeStep): void => {
                 time,
             );
 
+            renderText(
+                "DIRECTOR'S CUT",
+                TextSize.Small,
+                1,
+                -5,
+                true,
+                0,
+                undefined,
+                "rgb(256, 220, 220)",
+            );
             renderText(GAME_TITLE, TextSize.Huge);
 
             if (WAIT_FOR_NEXT_STATE < time.t - state.start) {
