@@ -103,10 +103,10 @@ const levelDrawArea: Dimensions = {
 interface Button {
     text: string;
     action?: Action;
-    width?: number;
-    height?: number;
-    x?: number;
-    y?: number;
+    width: number;
+    height: number;
+    x: number;
+    y: number;
 }
 
 export const actionButtons: Button[] = [
@@ -156,7 +156,7 @@ export const actionButtons: Button[] = [
         text: "☢",
         action: Action.Restart,
     },
-];
+] as Button[]; // Position and size is set in the draw function
 
 export interface LevelParameters {
     readonly number: number;
@@ -836,9 +836,13 @@ export const drawLevel = (
 
     for (let i = 0; i < actionButtons.length; i++) {
         const button = actionButtons[i];
-        const isRestartButton = button.action === Action.Restart;
-        const isFastforwardButton = button.action === Action.Fastforward;
-        const isBackButton = button.action === Action.Back;
+
+        // Set size and position on draw so that changes in window
+        // size take effect.
+        button.x = buttonRowX + i * buttonWidth;
+        button.y = buttonRowY;
+        button.width = buttonWidth - 1;
+        button.height = buttonRowHeight;
 
         const count =
             button.action != null
@@ -846,73 +850,7 @@ export const drawLevel = (
                   (level.actionsUsed[button.action] ?? 0)
                 : undefined;
 
-        button.x = buttonRowX + i * buttonWidth;
-        button.y = buttonRowY;
-        button.width = buttonWidth - 1;
-        button.height = buttonRowHeight;
-
-        cx.save();
-
-        if (button.action) {
-            // Determine color based on selection or hover
-            let fillColor =
-                count || isRestartButton || isFastforwardButton || isBackButton
-                    ? i === level.selectedActionIndex ||
-                      (isFastforwardButton && speedRatio > 1)
-                        ? "rgb(191, 85, 218)"
-                        : "rgb(172, 15, 94)"
-                    : "rgb(114, 10, 62)";
-
-            cx.fillStyle = fillColor;
-
-            cx.fillRect(button.x, button.y, button.width, button.height);
-
-            cx.fillStyle = "rgba(0, 0, 0, 0.25)";
-
-            cx.fillRect(
-                button.x,
-                button.y + button.height / 2,
-                button.width,
-                button.height / 2,
-            );
-        }
-
-        cx.textAlign = "center";
-        cx.textBaseline = "middle";
-        cx.fillStyle = isRestartButton
-            ? "rgb(255, 176, 176)"
-            : count || isBackButton || isFastforwardButton
-              ? "rgb(255, 209, 234)"
-              : "rgb(219, 52, 141)";
-        cx.globalAlpha =
-            count ||
-            !button.action ||
-            isRestartButton ||
-            isBackButton ||
-            isFastforwardButton
-                ? 1
-                : 0.6;
-        cx.font = `${fontSize}px Courier New`;
-        cx.fillText(
-            button.text,
-            button.x + button.width / 2,
-            button.y + button.height / 3,
-        );
-
-        if (button.action) {
-            cx.font = `${fontSize}px Courier New`;
-            cx.fillText(
-                isRestartButton || isBackButton || isFastforwardButton
-                    ? ""
-                    : count
-                      ? (count?.toString() ?? "-")
-                      : "-",
-                button.x + button.width / 2,
-                button.y + button.height * 0.75,
-            );
-        }
-
-        cx.restore();
+        drawButton(button, count, fontSize, i === level.selectedActionIndex);
     }
 
     const fadeElapsed = time.t - state.start;
@@ -923,4 +861,77 @@ export const drawLevel = (
         cx.fillRect(0, 0, canvas.width, canvas.height);
         cx.restore();
     }
+};
+
+const drawButton = (
+    button: Button,
+    count: number | undefined,
+    fontSize: number,
+    isSelected: boolean,
+): void => {
+    const isRestartButton = button.action === Action.Restart;
+    const isFastforwardButton = button.action === Action.Fastforward;
+    const isBackButton = button.action === Action.Back;
+
+    cx.save();
+
+    if (button.action) {
+        // Determine color based on selection or hover
+        let fillColor =
+            count || isRestartButton || isFastforwardButton || isBackButton
+                ? isSelected || (isFastforwardButton && speedRatio > 1)
+                    ? "rgb(191, 85, 218)"
+                    : "rgb(172, 15, 94)"
+                : "rgb(114, 10, 62)";
+
+        cx.fillStyle = fillColor;
+
+        cx.fillRect(button.x, button.y, button.width, button.height);
+
+        cx.fillStyle = "rgba(0, 0, 0, 0.25)";
+
+        cx.fillRect(
+            button.x,
+            button.y + button.height / 2,
+            button.width,
+            button.height / 2,
+        );
+    }
+
+    cx.textAlign = "center";
+    cx.textBaseline = "middle";
+    cx.fillStyle = isRestartButton
+        ? "rgb(255, 176, 176)"
+        : count || isBackButton || isFastforwardButton
+          ? "rgb(255, 209, 234)"
+          : "rgb(219, 52, 141)";
+    cx.globalAlpha =
+        count ||
+        !button.action ||
+        isRestartButton ||
+        isBackButton ||
+        isFastforwardButton
+            ? 1
+            : 0.6;
+    cx.font = `${fontSize}px Courier New`;
+    cx.fillText(
+        button.text,
+        button.x + button.width / 2,
+        button.y + button.height / 3,
+    );
+
+    if (button.action) {
+        cx.font = `${fontSize}px Courier New`;
+        cx.fillText(
+            isRestartButton || isBackButton || isFastforwardButton
+                ? ""
+                : count
+                  ? (count?.toString() ?? "-")
+                  : "-",
+            button.x + button.width / 2,
+            button.y + button.height * 0.75,
+        );
+    }
+
+    cx.restore();
 };
