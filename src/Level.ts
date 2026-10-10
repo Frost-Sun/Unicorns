@@ -100,9 +100,16 @@ const levelDrawArea: Dimensions = {
     height: canvas.height,
 };
 
+const enum Utility {
+    Back,
+    Fastforward,
+    Restart,
+}
+
 interface Button {
     text: string;
     action?: Action;
+    utility?: Utility;
     width: number;
     height: number;
     x: number;
@@ -112,7 +119,7 @@ interface Button {
 export const actionButtons: Button[] = [
     {
         text: "🗺️",
-        action: Action.Back,
+        utility: Utility.Back,
     },
     {
         text: "▲",
@@ -150,11 +157,11 @@ export const actionButtons: Button[] = [
     },
     {
         text: "▶▶",
-        action: Action.Fastforward,
+        utility: Utility.Fastforward,
     },
     {
         text: "☢",
-        action: Action.Restart,
+        utility: Utility.Restart,
     },
 ] as Button[]; // Position and size is set in the draw function
 
@@ -656,18 +663,18 @@ export const levelHandleClick = (
     // Check buttons
     for (let i = 0; i < actionButtons.length; i++) {
         const button = actionButtons[i];
-        if (includesPoint(button as Area, position)) {
-            if (button.action === Action.Back) {
+        if (includesPoint(button, position)) {
+            if (button.utility === Utility.Back) {
                 setStateLevelSelection(time);
                 return;
             }
 
-            if (button.action === Action.Restart) {
+            if (button.utility === Utility.Restart) {
                 setStateRun(time, level.number);
                 return;
             }
 
-            if (button.action === Action.Fastforward) {
+            if (button.utility === Utility.Fastforward) {
                 if (speedRatio === 1) {
                     setSpeedRatio(10);
                 } else {
@@ -849,8 +856,11 @@ export const drawLevel = (
                 ? (level.actionCounts[button.action] ?? 0) -
                   (level.actionsUsed[button.action] ?? 0)
                 : undefined;
+        const isSelected: boolean =
+            i === level.selectedActionIndex ||
+            (button.utility === Utility.Fastforward && speedRatio > 1);
 
-        drawButton(button, count, fontSize, i === level.selectedActionIndex);
+        drawButton(button, count, fontSize, isSelected);
     }
 
     const fadeElapsed = time.t - state.start;
@@ -869,17 +879,15 @@ const drawButton = (
     fontSize: number,
     isSelected: boolean,
 ): void => {
-    const isRestartButton = button.action === Action.Restart;
-    const isFastforwardButton = button.action === Action.Fastforward;
-    const isBackButton = button.action === Action.Back;
+    const isRestartButton = button.utility === Utility.Restart;
 
     cx.save();
 
-    if (button.action) {
-        // Determine color based on selection or hover
+    if (button.action != null || button.utility != null) {
+        // Determine color based on selection
         let fillColor =
-            count || isRestartButton || isFastforwardButton || isBackButton
-                ? isSelected || (isFastforwardButton && speedRatio > 1)
+            count || button.utility != null
+                ? isSelected
                     ? "rgb(191, 85, 218)"
                     : "rgb(172, 15, 94)"
                 : "rgb(114, 10, 62)";
@@ -902,17 +910,11 @@ const drawButton = (
     cx.textBaseline = "middle";
     cx.fillStyle = isRestartButton
         ? "rgb(255, 176, 176)"
-        : count || isBackButton || isFastforwardButton
+        : count || button.utility != null
           ? "rgb(255, 209, 234)"
           : "rgb(219, 52, 141)";
     cx.globalAlpha =
-        count ||
-        !button.action ||
-        isRestartButton ||
-        isBackButton ||
-        isFastforwardButton
-            ? 1
-            : 0.6;
+        count || !button.action || button.utility != null ? 1 : 0.6;
     cx.font = `${fontSize}px Courier New`;
     cx.fillText(
         button.text,
@@ -920,14 +922,10 @@ const drawButton = (
         button.y + button.height / 3,
     );
 
-    if (button.action) {
+    if (button.action != null) {
         cx.font = `${fontSize}px Courier New`;
         cx.fillText(
-            isRestartButton || isBackButton || isFastforwardButton
-                ? ""
-                : count
-                  ? (count?.toString() ?? "-")
-                  : "-",
+            count ? count.toString() : "-",
             button.x + button.width / 2,
             button.y + button.height * 0.75,
         );
