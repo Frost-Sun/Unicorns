@@ -104,6 +104,7 @@ const enum Utility {
     Back,
     Fastforward,
     Restart,
+    Zoom,
 }
 
 interface Button {
@@ -165,6 +166,11 @@ export const actionButtons: Button[] = [
     },
 ] as Button[]; // Position and size is set in the draw function
 
+const zoomButton: Button = {
+    text: "ZOOM",
+    utility: Utility.Zoom,
+} as Button; // Position and size is set in the draw function
+
 export interface LevelParameters {
     readonly number: number;
     readonly introduction: string;
@@ -206,7 +212,8 @@ export const createLevel = (params: LevelParameters): Level => ({
         mode: CameraMode.ShowWholeLevel,
         x: 50,
         y: 50,
-        zoom: 8,
+        zoom: 1,
+        visibleAreaHeight: 8 * TILE_HEIGHT,
     },
     tiles: Array.from({ length: params.xCount * params.yCount }, () => ({
         type: "water",
@@ -688,6 +695,15 @@ export const levelHandleClick = (
         }
     }
 
+    if (includesPoint(zoomButton, position)) {
+        const { camera } = level;
+        camera.mode =
+            camera.mode === CameraMode.ShowWholeLevel
+                ? CameraMode.StayInLevel
+                : CameraMode.ShowWholeLevel;
+        return;
+    }
+
     // Check action click
     if (level.selectedActionIndex != null) {
         const { camera } = level;
@@ -862,6 +878,12 @@ export const drawLevel = (
 
         drawButton(button, count, fontSize, isSelected);
     }
+
+    zoomButton.x = 0;
+    zoomButton.y = 0;
+    zoomButton.width = buttonWidth;
+    zoomButton.height = buttonWidth;
+    drawButton(zoomButton, undefined, fontSize, false);
 
     const fadeElapsed = time.t - state.start;
     if (fadeElapsed < 1000) {
