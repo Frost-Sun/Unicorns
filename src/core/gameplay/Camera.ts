@@ -67,7 +67,14 @@ const updateWithinLevel = (
     view: Dimensions,
     level: Dimensions,
 ): void => {
-    let newZoom = view.height / (camera.visibleAreaHeight ?? level.height);
+    let newZoom = camera.zoom;
+
+    if (camera.visibleAreaHeight != 0) {
+        newZoom =
+            camera.visibleAreaHeight != null
+                ? view.height / (camera.visibleAreaHeight ?? level.height)
+                : camera.zoom;
+    }
 
     // Force that the level fills the entire view area.
     const minXZoom = view.width / level.width;
