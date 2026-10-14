@@ -1,6 +1,6 @@
 import { renderUnicorn } from "./animations/unicorn";
 import { includesPoint, type Area } from "./core/math/Area";
-import { mousePositionToCanvasPosition } from "./core/platform/window";
+import type { Vector } from "./core/math/Vector";
 import type { TimeStep } from "./core/time/TimeStep";
 import { CHARACTER_SPEED } from "./GameObject";
 import { type GameStateLevelSelection } from "./GameState";
@@ -127,9 +127,7 @@ export const drawLevelSelection = (
     cx.restore();
 };
 
-export const levelSelectionHandeMouseMove = (event: MouseEvent): void => {
-    const position = mousePositionToCanvasPosition(canvas, event);
-
+export const levelSelectionHandeMouseMove = (position: Vector): void => {
     for (let i = 0; i < buttons.length; i++) {
         const button = buttons[i];
         if (button.enabled && includesPoint(button, position)) {
@@ -143,10 +141,8 @@ export const levelSelectionHandeMouseMove = (event: MouseEvent): void => {
 
 export const levelSelectionHandleClick = (
     time: TimeStep,
-    event: MouseEvent,
+    position: Vector,
 ): void => {
-    const position = mousePositionToCanvasPosition(canvas, event);
-
     for (let i = 0; i < buttons.length; i++) {
         const button = buttons[i];
         if (button.enabled && includesPoint(button, position)) {

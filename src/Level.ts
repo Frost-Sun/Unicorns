@@ -83,7 +83,6 @@ import {
 } from "./core/math/Vector";
 import { playTune, SFX_HOME, SFX_SPLASH } from "./audio/sfx";
 import type { Theme } from "./theme";
-import { mousePositionToCanvasPosition } from "./core/platform/window";
 import type { TileArea } from "./core/tiles/TileArea";
 import { clamp } from "./core/math/number";
 
@@ -600,10 +599,9 @@ const consumeAction = (
     return undefined;
 };
 
-export const levelHandleMouseMove = (level: Level, event: MouseEvent): void => {
+export const levelHandleMouseMove = (level: Level, position: Vector): void => {
     if (level.selectedActionIndex != null) {
         const { camera } = level;
-        const position = mousePositionToCanvasPosition(canvas, event);
         const pointOnLevel = screenToLevel(camera, levelDrawArea, position);
         const selectedAction = actionButtons[level.selectedActionIndex].action;
         const tile = getTileAt(level, pointOnLevel);
@@ -662,11 +660,9 @@ export const levelHandleMouseMove = (level: Level, event: MouseEvent): void => {
 
 export const levelHandleClick = (
     level: Level,
-    event: MouseEvent,
+    position: Vector,
     time: TimeStep,
 ): void => {
-    const position = mousePositionToCanvasPosition(canvas, event);
-
     // Check buttons
     for (let i = 0; i < actionButtons.length; i++) {
         const button = actionButtons[i];

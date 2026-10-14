@@ -19,6 +19,7 @@ import {
 } from "./LevelSelection";
 import { renderText, renderWaitForProgressInput, TextSize } from "./text";
 import { CHARACTER_SPEED } from "./GameObject";
+import { mousePositionToCanvasPosition } from "./core/platform/window";
 
 export const IntroductionTextTime = 6000;
 
@@ -283,11 +284,16 @@ const handleMouseMove = (event: MouseEvent): void => {
     const state = getGameState();
     switch (state.type) {
         case "levels": {
-            levelSelectionHandeMouseMove(event);
+            levelSelectionHandeMouseMove(
+                mousePositionToCanvasPosition(canvas, event),
+            );
             break;
         }
         case "run": {
-            levelHandleMouseMove(state.level, event);
+            levelHandleMouseMove(
+                state.level,
+                mousePositionToCanvasPosition(canvas, event),
+            );
             break;
         }
     }
@@ -298,13 +304,20 @@ const handleClick = (event: MouseEvent): void => {
     switch (state.type) {
         case "levels": {
             event.stopImmediatePropagation();
-            levelSelectionHandleClick(time, event);
+            levelSelectionHandleClick(
+                time,
+                mousePositionToCanvasPosition(canvas, event),
+            );
             playTune(SFX_CLICK);
             break;
         }
         case "run": {
             event.stopImmediatePropagation();
-            levelHandleClick(state.level, event, time);
+            levelHandleClick(
+                state.level,
+                mousePositionToCanvasPosition(canvas, event),
+                time,
+            );
             playTune(SFX_CLICK);
             break;
         }
