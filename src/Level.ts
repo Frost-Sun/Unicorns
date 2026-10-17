@@ -599,9 +599,27 @@ const consumeAction = (
     return undefined;
 };
 
-export const levelHandleMouseMove = (level: Level, position: Vector): void => {
+let previousMousePos: Vector = ZERO_VECTOR;
+
+export const levelHandleMouseMove = (
+    level: Level,
+    position: Vector,
+    isDown: boolean,
+): void => {
+    const { camera } = level;
+
+    if (camera.mode === CameraMode.StayInLevel && isDown) {
+        const pointOnLevel = screenToLevel(camera, levelDrawArea, position);
+        const previousPointInLevel = screenToLevel(
+            camera,
+            levelDrawArea,
+            previousMousePos,
+        );
+        camera.x += previousPointInLevel.x - pointOnLevel.x;
+        camera.y += previousPointInLevel.y - pointOnLevel.y;
+    }
+
     if (level.selectedActionIndex != null) {
-        const { camera } = level;
         const pointOnLevel = screenToLevel(camera, levelDrawArea, position);
         const selectedAction = actionButtons[level.selectedActionIndex].action;
         const tile = getTileAt(level, pointOnLevel);
@@ -656,6 +674,8 @@ export const levelHandleMouseMove = (level: Level, position: Vector): void => {
             level.highlightedCharacter = undefined;
         }
     }
+
+    previousMousePos = position;
 };
 
 export const levelHandleClick = (

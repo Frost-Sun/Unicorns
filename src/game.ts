@@ -280,6 +280,16 @@ const draw = (time: TimeStep): void => {
     renderGradient(canvas, cx, 0.5);
 };
 
+let isMouseDown: boolean = false;
+
+const handleMouseDown = (): void => {
+    isMouseDown = true;
+};
+
+const handleMouseUp = (): void => {
+    isMouseDown = false;
+};
+
 const handleMouseMove = (event: MouseEvent): void => {
     const state = getGameState();
     switch (state.type) {
@@ -293,6 +303,7 @@ const handleMouseMove = (event: MouseEvent): void => {
             levelHandleMouseMove(
                 state.level,
                 mousePositionToCanvasPosition(canvas, event),
+                isMouseDown,
             );
             break;
         }
@@ -328,6 +339,8 @@ export const start = async (): Promise<void> => {
     // Not really needed in this game:
     // initializeKeyboard();
 
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("mouseup", handleMouseUp);
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("click", handleClick);
 
