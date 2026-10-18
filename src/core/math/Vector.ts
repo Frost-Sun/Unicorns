@@ -35,6 +35,10 @@ export function isZero(a: Vector): boolean {
     return a.x === 0 && a.y === 0;
 }
 
+export function areVectorsClose(a: Vector, b: Vector, margin: number): boolean {
+    return distanceSquared(a, b) < margin * margin;
+}
+
 export function distance(a: Vector, b: Vector): number {
     const dx = a.x - b.x;
     const dy = a.y - b.y;

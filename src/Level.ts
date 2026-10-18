@@ -74,6 +74,7 @@ import {
 } from "./gamestates";
 import { Action, actionIsArrow, ActionTiles, actionToArrow } from "./Action";
 import {
+    areVectorsClose,
     distanceSquared,
     divide,
     length,
@@ -599,7 +600,12 @@ const consumeAction = (
     return undefined;
 };
 
+let mousePosOnMouseDown: Vector = ZERO_VECTOR;
 let previousMousePos: Vector = ZERO_VECTOR;
+
+export const levelHandleMouseDown = (_level: Level, position: Vector): void => {
+    mousePosOnMouseDown = position;
+};
 
 export const levelHandleMouseMove = (
     level: Level,
@@ -717,6 +723,11 @@ export const levelHandleClick = (
             camera.mode === CameraMode.ShowWholeLevel
                 ? CameraMode.StayInLevel
                 : CameraMode.ShowWholeLevel;
+        return;
+    }
+
+    if (!areVectorsClose(mousePosOnMouseDown, position, TILE_WIDTH * 0.4)) {
+        // Don't perform action when dragging.
         return;
     }
 

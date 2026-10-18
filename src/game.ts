@@ -9,6 +9,7 @@ import { canvas, cx, drawRainbowBackground } from "./graphics";
 import {
     drawLevel,
     levelHandleClick,
+    levelHandleMouseDown,
     levelHandleMouseMove,
     updateLevel,
 } from "./Level";
@@ -282,12 +283,47 @@ const draw = (time: TimeStep): void => {
 
 let isMouseDown: boolean = false;
 
-const handleMouseDown = (): void => {
+const handleMouseDown = (event: MouseEvent): void => {
+    event.stopImmediatePropagation();
     isMouseDown = true;
+
+    // Handle click event handlers
+    const state = getGameState();
+    switch (state.type) {
+        case "run": {
+            levelHandleMouseDown(
+                state.level,
+                mousePositionToCanvasPosition(canvas, event),
+            );
+            break;
+        }
+    }
 };
 
-const handleMouseUp = (): void => {
+const handleMouseUp = (event: MouseEvent): void => {
+    event.stopImmediatePropagation();
     isMouseDown = false;
+
+    const state = getGameState();
+    switch (state.type) {
+        case "levels": {
+            levelSelectionHandleClick(
+                time,
+                mousePositionToCanvasPosition(canvas, event),
+            );
+            playTune(SFX_CLICK);
+            break;
+        }
+        case "run": {
+            levelHandleClick(
+                state.level,
+                mousePositionToCanvasPosition(canvas, event),
+                time,
+            );
+            playTune(SFX_CLICK);
+            break;
+        }
+    }
 };
 
 const handleMouseMove = (event: MouseEvent): void => {
@@ -310,31 +346,6 @@ const handleMouseMove = (event: MouseEvent): void => {
     }
 };
 
-const handleClick = (event: MouseEvent): void => {
-    const state = getGameState();
-    switch (state.type) {
-        case "levels": {
-            event.stopImmediatePropagation();
-            levelSelectionHandleClick(
-                time,
-                mousePositionToCanvasPosition(canvas, event),
-            );
-            playTune(SFX_CLICK);
-            break;
-        }
-        case "run": {
-            event.stopImmediatePropagation();
-            levelHandleClick(
-                state.level,
-                mousePositionToCanvasPosition(canvas, event),
-                time,
-            );
-            playTune(SFX_CLICK);
-            break;
-        }
-    }
-};
-
 export const start = async (): Promise<void> => {
     // Not really needed in this game:
     // initializeKeyboard();
@@ -342,7 +353,6 @@ export const start = async (): Promise<void> => {
     document.addEventListener("mousedown", handleMouseDown);
     document.addEventListener("mouseup", handleMouseUp);
     document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("click", handleClick);
 
     window.requestAnimationFrame(gameLoop);
 
